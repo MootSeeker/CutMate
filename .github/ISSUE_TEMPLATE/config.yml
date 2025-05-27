@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: CutMate Support
+    url: mailto:support@cutmate.app
+    about: Please contact support directly for account-specific or urgent issues.  - name: Security Issues
+    url: https://github.com/MootSeeker/CutMate/blob/main/.github/SECURITY.md
+    about: Please report security vulnerabilities according to our security policy.
