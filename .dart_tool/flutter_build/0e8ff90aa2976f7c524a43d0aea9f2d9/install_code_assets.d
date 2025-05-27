@@ -1,0 +1,1 @@
+ C:\\Entwicklung\\Software\\CutMate\\.dart_tool\\flutter_build\\0e8ff90aa2976f7c524a43d0aea9f2d9\\native_assets.json: 
