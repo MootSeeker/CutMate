@@ -22,15 +22,24 @@ class MealProvider extends ChangeNotifier {
   /// Get today's recommendation for a specific meal type
   Meal? getRecommendationForMealType(String mealType) {
     if (_recommendations.isEmpty) return null;
-    
-    // Try to find a recommendation with the given meal type in the name or description
+      // Try to find all recommendations matching the given meal type
     final mealTypeRegex = RegExp(mealType, caseSensitive: false);
     final matchingMeals = _recommendations.where(
       (meal) => mealTypeRegex.hasMatch(meal.name) || mealTypeRegex.hasMatch(meal.description)
     ).toList();
     
-    // Return the first matching meal, or the most recent recommendation
-    return matchingMeals.isNotEmpty ? matchingMeals.first : _recommendations.first;
+    // If we have matching meals, return a random one from the first 3 matches
+    // This adds variety even without calling the API
+    if (matchingMeals.isNotEmpty) {
+      // Use the timestamp to create a "random" selection among the most recent matches
+      final timestamp = DateTime.now().microsecondsSinceEpoch;
+      final maxIndex = matchingMeals.length > 3 ? 3 : matchingMeals.length;
+      final selectedIndex = timestamp % maxIndex;
+      return matchingMeals[selectedIndex];
+    }
+    
+    // If no matching meals, return the most recent recommendation
+    return _recommendations.isNotEmpty ? _recommendations.first : null;
   }
   
   /// Initialize the provider with data from storage

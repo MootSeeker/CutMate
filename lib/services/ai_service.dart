@@ -9,11 +9,12 @@ class AiService {
   
   // API key - should be stored securely in a real app
   static const String _apiKey = '2985705c7b234020b911dc60006e0531';
-    /// Send a request to the AI model and get a response
+  
+  /// Send a request to the AI model and get a response
   static Future<String> generateText({
     required String prompt,
     String model = 'deepseek/deepseek-prover-v2',
-    double temperature = 0.7,
+    double temperature = 0.9, // Increased from 0.7 to get more varied responses
     double topP = 0.7,
     int frequencyPenalty = 1,
     int maxOutputTokens = 512,
@@ -42,8 +43,8 @@ class AiService {
           'top_k': topK,
         }),
       );
-      
-      if (response.statusCode != 200) {
+        // Accept both 200 and 201 as success codes (201 = Created)
+      if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint('AIML API returned error status code: ${response.statusCode}');
         debugPrint('Response body: ${response.body}');
         throw Exception('Failed to get response from AIML API: ${response.body}');
