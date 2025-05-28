@@ -124,8 +124,7 @@ class _WeightEntryScreenState extends State<WeightEntryScreen> {
                   
                   if (weight < AppConstants.minWeightKg || 
                       weight > AppConstants.maxWeightKg) {
-                    return 'Weight must be between ${AppConstants.minWeightKg} ' +
-                           'and ${AppConstants.maxWeightKg} kg';
+                    return 'Weight must be between ${AppConstants.minWeightKg} ' 'and ${AppConstants.maxWeightKg} kg';
                   }
                   
                   return null;

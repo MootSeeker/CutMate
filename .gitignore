@@ -26,6 +26,7 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.dart_tool/**/*
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
@@ -100,16 +101,29 @@ app.*.map.json
 # Web related
 **/web/icons/
 lib/generated_plugin_registrant.dart
+**/web/**/*.dart.js
+**/web/**/*.dart.js.deps
+**/web/**/*.dart.js.map
+**/web/flutter_service_worker.js
+**/web/main.dart.js
+**/web/canvaskit/
 
 # Windows
 **/windows/flutter/generated_plugin_registrant.cc
 **/windows/flutter/generated_plugin_registrant.h
 **/windows/flutter/generated_plugins.cmake
+**/windows/**/cmake_install.cmake
+**/windows/**/compile_commands.json
+**/windows/**/flutter_assemble.vcxproj*
+**/windows/**/flutter_wrapper_*.vcxproj*
+**/windows/**/CMakeCache.txt
+**/windows/**/CMakeFiles/
 
 # Linux
 **/linux/flutter/generated_plugin_registrant.cc
 **/linux/flutter/generated_plugin_registrant.h
 **/linux/flutter/generated_plugins.cmake
+**/linux/build/
 
 # Environment files containing secrets
 *.env
@@ -148,3 +162,18 @@ TODO.md
 
 # Project-specific ignores
 # Add any specific files/folders for your CutMate project here
+
+# Flutter build-specific files
+**/build/**/*.stamp
+**/build/**/*.dill
+**/build/**/generated_assets.json
+**/generated/
+**/ephemeral/
+**/build/native_assets/
+
+# VS Code generated files
+**/.vscode/*cache*/
+**/.vscode/*storage*/
+
+# Plugin-generated web files
+lib/web_plugins/

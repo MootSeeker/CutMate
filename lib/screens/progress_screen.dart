@@ -188,7 +188,7 @@ class ProgressScreen extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       child: LineChart(
         LineChartData(
-          gridData: FlGridData(show: true),
+          gridData: const FlGridData(show: true),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
@@ -218,8 +218,8 @@ class ProgressScreen extends StatelessWidget {
                 },
               ),
             ),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(show: true),
           minX: 0,
@@ -238,7 +238,7 @@ class ProgressScreen extends StatelessWidget {
               isCurved: true,              color: const Color(0xFF2F80FF), // primary accent color
               barWidth: 3,
               isStrokeCapRound: true,
-              dotData: FlDotData(show: true),
+              dotData: const FlDotData(show: true),
               belowBarData: BarAreaData(
                 show: true,
                 color: const Color(0xFF2F80FF).withOpacity(0.2),
