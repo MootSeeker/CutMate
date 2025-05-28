@@ -6,6 +6,22 @@ import 'package:cutmate/models/weight_entry.dart';
 
 /// Service for handling local storage operations
 class StorageService {
+  /// Save any data to local storage with a specific key
+  static Future<void> saveData(String key, dynamic data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, jsonEncode(data));
+  }
+  
+  /// Load data from local storage by key
+  static Future<dynamic> loadData(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(key);
+    
+    if (data != null) {
+      return jsonDecode(data);
+    }
+    return null;
+  }
   /// Save user data to local storage
   static Future<void> saveUser(User user) async {
     final prefs = await SharedPreferences.getInstance();

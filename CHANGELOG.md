@@ -11,6 +11,9 @@ All notable changes to the CutMate project will be documented in this file.
 - Weight tracking functionality with form validation
 - Navigation between screens (Home, Progress, Weight Entry)
 - Home screen shows latest weight entry from storage
+- Meal recommendation screen with Mistral-7B AI integration
+- Ingredient selection for personalized meal recommendations
+- Fallback meal suggestions when AI service is unavailable
 
 ### Changed
 - MainScreen now accepts initialIndex parameter for direct navigation to tabs

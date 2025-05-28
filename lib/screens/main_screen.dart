@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cutmate/screens/home_screen.dart';
 import 'package:cutmate/screens/progress_screen.dart';
+import 'package:cutmate/screens/meal_screen.dart';
 
 /// Main screen with bottom navigation bar
 class MainScreen extends StatefulWidget {
@@ -14,11 +15,10 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
-  
-  // Pages to display
+    // Pages to display
   final List<Widget> _pages = [
     const HomeScreen(),
-    const PlaceholderScreen(title: 'Meals'),
+    const MealScreen(),
     const ProgressScreen(),
     const PlaceholderScreen(title: 'Profile'),
   ];

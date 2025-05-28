@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/screens/main_screen.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/services/weight_provider.dart';
+import 'package:cutmate/services/meal_provider.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => WeightProvider()),
+        ChangeNotifierProvider(create: (context) => MealProvider()),
       ],
       child: const CutMateApp(),
     ),
@@ -22,13 +24,16 @@ class CutMateApp extends StatefulWidget {
   State<CutMateApp> createState() => _CutMateAppState();
 }
 
-class _CutMateAppState extends State<CutMateApp> {
-  @override
+class _CutMateAppState extends State<CutMateApp> {  @override
   void initState() {
     super.initState();
-    // Initialize weight data when app starts
+    // Initialize data when app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize weight data
       Provider.of<WeightProvider>(context, listen: false).initialize();
+      
+      // Initialize meal data
+      Provider.of<MealProvider>(context, listen: false).initialize();
     });
   }
   @override

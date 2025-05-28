@@ -47,6 +47,46 @@ The Progress screen shows your weight loss journey with helpful visualizations:
 - **Yellow**: Indicates weight gain (movement away from your goal)
 - **Blue**: Neutral information
 
+### Getting Meal Recommendations
+
+The Meal screen provides AI-powered meal suggestions tailored to your preferences:
+
+![Meal Screen](../assets/images/screenshots/meal_screen.png)
+
+1. **Meal Type Selection**: Choose between breakfast, lunch, dinner, or snack
+2. **Ingredients Selection**: Select ingredients you have available
+3. **Recommendation Card**: View the AI-generated meal suggestion with:
+   - Recipe name and description
+   - Nutritional information
+   - Ingredients list
+   - Step-by-step cooking instructions
+4. **Refresh Button**: Generate a new meal recommendation
+5. **Favorite Button**: Save recipes you like
+
+#### Working with Ingredients
+
+To get more personalized meal recommendations:
+
+1. Select ingredients you already have in your kitchen
+2. Tap the refresh button to generate a recipe using those ingredients
+3. Clear all ingredients if you want more variety
+
+#### Understanding Nutrition Information
+
+Each meal recommendation includes key nutritional information:
+
+- **Calories**: Total energy content
+- **Protein**: Important for muscle maintenance during weight loss
+- **Carbs**: Primary energy source
+- **Fat**: Essential nutrient, provides satiety
+
+#### Saving Favorites
+
+To save a meal you like:
+
+1. Tap the heart icon on the meal card
+2. Access your saved meals later (feature coming soon)
+
 ### Navigation
 
 Use the bottom navigation bar to move between the main sections of the app:
@@ -75,10 +115,10 @@ Use the bottom navigation bar to move between the main sections of the app:
 
 ## Coming Soon
 
-- AI meal recommendations
 - Goal setting and tracking
 - Shareable progress cards
 - Profile customization
+- Meal favorites collection
 
 ---
 

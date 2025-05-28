@@ -22,9 +22,11 @@ dependencies:
   
   # Date formatting
   intl: ^0.18.0
-  
-  # HTTP requests
+    # HTTP requests
   http: ^1.1.0
+  
+  # Unique ID generation
+  uuid: ^4.0.0
   
   # Google Fonts (fallback for custom fonts)
   google_fonts: ^6.0.0

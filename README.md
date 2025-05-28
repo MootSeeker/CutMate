@@ -7,7 +7,7 @@ CutMate is an AI-powered weight loss application primarily for males aged 18-35.
 - **Personalized Goal Setting**: Set your target weight and timeframe
 - **Weight Tracking**: Log your weight daily with optional notes
 - **Progress Visualization**: View your weight loss journey through intuitive charts
-- **AI Meal Recommendations**: Get meal suggestions tailored to your preferences and goals
+- **AI Meal Recommendations**: Get meal suggestions tailored to your preferences, available ingredients, and dietary goals using Mistral-7B AI model
 - **Shareable Content**: Create and share meal cards and milestone achievements
 
 ## Project Status
@@ -22,7 +22,7 @@ CutMate is an AI-powered weight loss application primarily for males aged 18-35.
 - ✅ Home screen with key feature cards
 
 ### In Progress
-- 🔄 Meal recommendation features with AI integration
+- ✅ Meal recommendation features with AI integration
 - 🔄 User profile management
 - 🔄 Shareable content generation
 
