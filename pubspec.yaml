@@ -1,0 +1,60 @@
+name: cutmate
+description: Your AI wingman for weight loss. CutMate helps men achieve their cutting goals through personalized AI meal recommendations, progress tracking, and motivational support—all with a friendly, no-pressure approach.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  
+  # State management
+  provider: ^6.0.0
+  
+  # Charts and visualizations
+  fl_chart: ^0.64.0
+  
+  # Local storage
+  shared_preferences: ^2.2.0
+  
+  # Date formatting
+  intl: ^0.18.0
+    # HTTP requests
+  http: ^1.1.0
+  
+  # Unique ID generation
+  uuid: ^4.0.0
+  
+  # Google Fonts (fallback for custom fonts)
+  google_fonts: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Assets
+  assets:
+    - assets/images/
+    - assets/icons/
+  
+  # Fonts
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+    - family: Roboto Mono
+      fonts:
+        - asset: assets/fonts/RobotoMono-Regular.ttf
+        - asset: assets/fonts/RobotoMono-Bold.ttf
+          weight: 700
