@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/meal.dart';
 import 'package:cutmate/models/user.dart';
-import 'package:cutmate/services/meal_provider.dart';
+import 'package:cutmate/services/meal_provider_enhanced.dart';
+import 'package:cutmate/widgets/meal_card_with_feedback.dart';
 
 // Common ingredients that users might have
 final List<String> commonIngredients = [
@@ -68,7 +69,6 @@ class _MealScreenState extends State<MealScreen> {
       }
     });
   }
-
   /// Generate a new meal recommendation
   Future<void> _generateMealRecommendation() async {
     if (_isGenerating) return;
@@ -86,7 +86,9 @@ class _MealScreenState extends State<MealScreen> {
         mealType: _selectedMealType,
         preferredIngredients: _selectedIngredients,
         availableIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
+        count: 3, // Generate more meals to improve the recommendation quality
       );
+      // No need to notifyListeners here as the provider already does it
     } finally {
       setState(() {
         _isGenerating = false;
@@ -303,43 +305,20 @@ class _MealScreenState extends State<MealScreen> {
       ),
     );
   }
-
   /// Build a card showing a meal recommendation
   Widget _buildMealRecommendationCard(Meal meal) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Meal header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  meal.name,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  meal.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: meal.isFavorite ? Colors.red : null,
-                ),
-                onPressed: () {
-                  final mealProvider = Provider.of<MealProvider>(context, listen: false);
-                  mealProvider.toggleFavorite(meal.id);
-                },
-              ),
-            ],
+        children: [          // Enhanced Meal Card with Feedback
+          MealCardWithFeedback(
+            meal: meal,
+            onFeedbackGiven: () {
+              // Refresh the UI when feedback is given
+              setState(() {});
+            },
           ),
-          
-          const SizedBox(height: 8),
-          
-          // Meal description
-          Text(meal.description),
           
           const SizedBox(height: 16),
           

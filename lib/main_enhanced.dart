@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/screens/main_screen.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/services/weight_provider.dart';
-import 'package:cutmate/services/meal_provider_enhanced.dart';
+import 'package:cutmate/services/meal_provider.dart';
+import 'package:cutmate/screens/enhanced_meal_test_screen.dart';
 
 void main() {
   runApp(
@@ -24,7 +25,8 @@ class CutMateApp extends StatefulWidget {
   State<CutMateApp> createState() => _CutMateAppState();
 }
 
-class _CutMateAppState extends State<CutMateApp> {  @override
+class _CutMateAppState extends State<CutMateApp> {
+  @override
   void initState() {
     super.initState();
     // Initialize data when app starts
@@ -36,32 +38,31 @@ class _CutMateAppState extends State<CutMateApp> {  @override
       Provider.of<MealProvider>(context, listen: false).initialize();
     });
   }
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(useMaterial3: true).copyWith(
-        primaryColor: const Color(0xFF2F80FF),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2F80FF),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF7F7F7),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        useMaterial3: true,
+        fontFamily: 'Inter',
       ),
-      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-        primaryColor: const Color(0xFF2F80FF),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2F80FF),
-          brightness: Brightness.dark,
-          background: const Color(0xFF111827),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF111827),
-      ),
-      themeMode: ThemeMode.system, // Respect system theme
-      home: const MainScreen(),
+      routes: {
+        '/': (context) => MainScreen(),
+        '/enhanced-meal-test': (context) => EnhancedMealTestScreen(), // Add this route for testing
+      },
+      initialRoute: '/',
     );
   }
 }
 
-// HomeScreen class moved to lib/screens/home_screen.dart
+// Example navigation to the enhanced meal test screen (add this to a settings screen or menu):
+/*
+ElevatedButton(
+  onPressed: () {
+    Navigator.of(context).pushNamed('/enhanced-meal-test');
+  },
+  child: const Text('Test Enhanced Meal System'),
+),
+*/

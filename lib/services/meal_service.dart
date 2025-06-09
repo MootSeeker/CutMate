@@ -1,761 +1,366 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 import '../models/meal.dart';
-import '../models/user.dart';
-import '../constants/app_constants.dart';
-import './storage_service.dart';
 import 'ai_service.dart';
+import 'storage_service.dart';
+import 'ingredient_service.dart'; // Added for relevance score
 
-/// Service for handling meal recommendations
 class MealService {
-  // UUID generator
-  static final _uuid = Uuid();
-  
-  /// Get meal recommendations based on user preferences and constraints
-  static Future<List<Meal>> getMealRecommendations({
-    required User? user,
-    int count = 1,
-    List<String>? preferredIngredients,
-    List<String>? availableIngredients,
-    List<String>? excludedIngredients,
-    Map<String, dynamic>? nutritionGoals,
-    String? mealType, // 'breakfast', 'lunch', 'dinner', 'snack'
-    bool useFallbackModel = true, // Use local model if remote fails
-  }) async {
-    try {
-      // Only use fallbacks in debug mode if explicitly requested
-      if (kDebugMode && !AppConstants.useAimlApi) {
-        // For testing purposes, we can use the fallback meals
-        debugPrint('Debug mode: Using fallback meals instead of AI service');
-        // Get all possible fallback meals for this meal type
-        final allFallbackMeals = _getFallbackMeals(mealType: mealType, availableIngredients: availableIngredients);
-        
-        // Select a random subset based on timestamp to ensure variety
-        final resultCount = count > allFallbackMeals.length ? allFallbackMeals.length : count;
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final startIndex = timestamp % (allFallbackMeals.length > resultCount ? allFallbackMeals.length - resultCount + 1 : 1);
-        
-        final fallbackMeals = allFallbackMeals.sublist(startIndex, startIndex + resultCount);
-        await _saveMealsToStorage(fallbackMeals);
-        return fallbackMeals;
-      }
-      
-      // Try to get meals from the AIML API
-      final meals = await _getMealsFromAiml(
-        user: user,
-        count: count,
-        preferredIngredients: preferredIngredients,
-        availableIngredients: availableIngredients,
-        excludedIngredients: excludedIngredients,
-        nutritionGoals: nutritionGoals,
-        mealType: mealType,
-      );
-      
-      // If we got meals, return them
-      if (meals.isNotEmpty) {
-        // Save to local storage
-        await _saveMealsToStorage(meals);
-        return meals;
-      }
-      
-      // If we reach here, we couldn't get meals from any source
-      return _getFallbackMeals(mealType: mealType, availableIngredients: availableIngredients);
-    } catch (e) {
-      debugPrint('Error getting meal recommendations: $e');
-      return _getFallbackMeals(mealType: mealType, availableIngredients: availableIngredients);
-    }
-  }
-  
-  /// Get meal recommendations from the AIML API
-  static Future<List<Meal>> _getMealsFromAiml({
-    required User? user,
-    required int count,
-    List<String>? preferredIngredients,
-    List<String>? availableIngredients,
-    List<String>? excludedIngredients,
-    Map<String, dynamic>? nutritionGoals,
-    String? mealType,
-  }) async {
-    try {
-      // Prepare the prompt for the AI model
-      final prompt = _buildMealPrompt(
-        user: user,
-        count: count,
-        preferredIngredients: preferredIngredients,
-        availableIngredients: availableIngredients,
-        excludedIngredients: excludedIngredients,
-        nutritionGoals: nutritionGoals,
-        mealType: mealType,
-      );
-      
-      // System message to specify the role of the AI
-      final systemMessage = 'You are a nutrition expert and chef who creates healthy meal recommendations. Be creative and provide varied meal ideas - do not repeat meal suggestions you\'ve given before. You MUST use the available ingredients mentioned in the prompt for all recipes.';
-      final fullPrompt = '$systemMessage\n\n$prompt';
-      
-      // Use the AiService to generate the meal recommendations
-      // Increase temperature for more varied responses
-      final content = await AiService.generateText(
-        prompt: fullPrompt,
-        model: 'deepseek/deepseek-prover-v2',
-        temperature: 0.9, // Higher temperature for more randomness
-        maxOutputTokens: 1024,
-      );
-      
-      // Parse the content into meals
-      return _parseMealsFromAiResponse(content, 'aiml');
-    } catch (e) {
-      debugPrint('Error getting meals from AIML API: $e');
-      return [];
-    }
-  }
-  
-  /// Build the prompt for the AI model based on user and preferences
-  static String _buildMealPrompt({
-    required User? user,
-    required int count,
-    List<String>? preferredIngredients,
-    List<String>? availableIngredients,
-    List<String>? excludedIngredients,
-    Map<String, dynamic>? nutritionGoals,
-    String? mealType,
-  }) {
-    // Default to a generic prompt if no user is provided
-    final dietaryRestrictions = user?.dietaryRestrictions ?? [];
-    final goalText = user?.targetWeightKg != null 
-        ? 'target weight of ${user!.targetWeightKg} kg'
-        : 'general health';
-        
-    final mealTypeText = mealType != null ? '$mealType' : 'meal';
-    final preferredText = preferredIngredients != null && preferredIngredients.isNotEmpty
-        ? 'preferred ingredients: ${preferredIngredients.join(", ")}'
-        : '';
-    final availableText = availableIngredients != null && availableIngredients.isNotEmpty
-        ? 'available ingredients: ${availableIngredients.join(", ")}'
-        : '';
-    final excludedText = excludedIngredients != null && excludedIngredients.isNotEmpty
-        ? 'exclude: ${excludedIngredients.join(", ")}'
-        : '';
-    final restrictionsText = dietaryRestrictions.isNotEmpty
-        ? 'dietary restrictions: ${dietaryRestrictions.join(", ")}'
-        : '';
-    
-    // Add a timestamp to ensure the AI doesn't cache responses
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    
-    return '''
-    Create $count healthy $mealTypeText recipe(s) for weight loss with the following specifications:
-    
-    ${preferredText.isNotEmpty ? '$preferredText\n' : ''}
-    ${availableText.isNotEmpty ? '$availableText\n' : ''}
-    ${excludedText.isNotEmpty ? '$excludedText\n' : ''}
-    ${restrictionsText.isNotEmpty ? '$restrictionsText\n' : ''}
-    Goal: $goalText
-    
-    Current time: $timestamp (use this to create a unique meal recommendation)
-    
-    IMPORTANT: You MUST use the available ingredients mentioned above in your recipe. If no ingredients are specified, feel free to suggest any healthy ingredients.
+  final AiService _aiService;
+  final StorageService _storageService;
+  final IngredientService _ingredientService; // Added for relevance score
+  final String _cacheKey = 'meal_recommendations';
+  final Duration _cacheDuration = const Duration(hours: 24);
 
-    For each meal, provide:
-    1. A catchy name
-    2. A brief description emphasizing health benefits for weight loss
-    3. List of ingredients with quantities
-    4. Step-by-step cooking instructions 
-    5. Nutritional information (calories, protein, carbs, fats)
-    
-    Format the response as a JSON array with the following structure for each meal.
-    Make sure all property names and string values are properly enclosed in double quotes:
-    {
-      "name": "Meal Name",
-      "description": "Brief description",
-      "ingredients": ["ingredient 1", "ingredient 2", ...],
-      "instructions": ["step 1", "step 2", ...],
-      "nutrients": {
-        "calories": 000,
-        "protein": 00,
-        "carbs": 00,
-        "fat": 00
+  MealService(this._aiService, this._storageService, this._ingredientService);
+
+  Future<List<Meal>> getMealRecommendations(
+      List<String> ingredients, List<String> preferences) async {
+    final cachedData = await _storageService.getCache(_cacheKey);
+    if (cachedData != null) {
+      final now = DateTime.now();
+      final cacheTime = DateTime.parse(cachedData['timestamp']);
+      if (now.difference(cacheTime) < _cacheDuration) {
+        if (kDebugMode) {
+          print('Using cached meal recommendations.');
+        }
+        final List<dynamic> mealJson = cachedData['data'];
+        // Ensure relevanceScore is handled, even from cache
+        return mealJson
+            .map((json) => Meal.fromJson(json as Map<String, dynamic>))
+            .toList();
       }
     }
-    ''';
-  }
-    
-  /// Parse the AI response into meal objects
-  static List<Meal> _parseMealsFromAiResponse(String content, String source) {
+
+    if (kDebugMode) {
+      print('Fetching new meal recommendations.');
+    }
     try {
-      debugPrint('Parsing AI response for meal recommendations');
-      
-      // Clean up the content
-      // Sometimes AI responses include markdown code block delimiters or extra text
-      String cleanedContent = content;
-      
-      // Remove markdown code block markers (```json and ```)
-      cleanedContent = cleanedContent.replaceAll(RegExp(r'```json\s*|\s*```', multiLine: true), '');
-      
-      // Remove all HTML tags and attributes to prevent parsing issues
-      cleanedContent = cleanedContent.replaceAll(RegExp(r'<[^>]*>', multiLine: true), '');
-      
-      // Remove line breaks and non-standard whitespace characters
-      cleanedContent = cleanedContent.replaceAll(RegExp(r'<br\s*\/?>|&nbsp;|<\s*br\s*\/?>|<\s*\/?\s*br\s*\/?>', multiLine: true), ' ');
-      
-      // Fix specific issues seen in the API response
-      cleanedContent = cleanedContent.replaceAll(RegExp(r'<emphsis on="true">(.*?)</emphsis>', multiLine: true), r'$1');
-      cleanedContent = cleanedContent.replaceAll(RegExp(r'<emphasis>(.*?)</emphasis>', multiLine: true), r'$1');
-      
-      // Replace any character encoding issues with standard characters
-      cleanedContent = cleanedContent.replaceAll('°C', '°C');
-      
-      // First, try to extract a JSON array
-      final jsonArrayRegExp = RegExp(r'\[\s*\{.*?\}\s*\]', dotAll: true);
-      final jsonArrayMatch = jsonArrayRegExp.firstMatch(cleanedContent);
-      
-      if (jsonArrayMatch != null) {
-        debugPrint('Found JSON array in response');
-        final jsonString = jsonArrayMatch.group(0)!;
-        try {
-          final List<dynamic> meals = jsonDecode(jsonString);
-          return _createMealsFromJson(meals, source);
-        } catch (jsonArrayError) {
-          debugPrint('Error parsing JSON array: $jsonArrayError');
-          // Fall through to next parsing method
-        }
+      final aiResponse = await _aiService.getMealRecommendations(
+          ingredients, preferences);
+      if (kDebugMode) {
+        print('AI Response for meals: $aiResponse');
       }
-      
-      // Second, try to parse the entire content as a JSON array
-      try {
-        debugPrint('Trying to parse entire content as JSON array');
-        final List<dynamic> meals = jsonDecode(cleanedContent);
-        return _createMealsFromJson(meals, source);
-      } catch (entireJsonError) {
-        debugPrint('Error parsing entire content as JSON array: $entireJsonError');
-        // Fall through to next parsing method
-      }
-      
-      // Third, try to extract individual JSON objects
-      debugPrint('Looking for individual JSON objects');
-      final mealRegExp = RegExp(r'\{\s*"name".*?(?=\},|\}\s*$)', dotAll: true);
-      final mealMatches = mealRegExp.allMatches(cleanedContent).map((m) => '${m.group(0)}}').toList();
-      
-      if (mealMatches.isNotEmpty) {
-        debugPrint('Found ${mealMatches.length} individual meal objects');
-        final List<dynamic> meals = [];
-        
-        for (final mealString in mealMatches) {
-          try {
-            final meal = jsonDecode(mealString);
-            meals.add(meal);
-          } catch (individualJsonError) {
-            debugPrint('Error parsing individual meal JSON: $individualJsonError');
-            // Continue with next meal
-          }
-        }
-        
-        if (meals.isNotEmpty) {
-          return _createMealsFromJson(meals, source);
-        }
-      }
-      
-      // Fourth, look for any JSON-like structure and attempt to fix common issues
-      debugPrint('Attempting to fix malformed JSON');
-      String fixedContent = cleanedContent;
-      
-      // Fix common JSON formatting issues
-      // First, find any unquoted property names (like nutrients: { calories: 400 })
-      // and replace them with properly quoted versions ("nutrients": { "calories": 400 })
-      fixedContent = fixedContent.replaceAll(
-        RegExp(r'(\w+):\s*([{\[]?)'), 
-        r'"$1": $2'
-      );
-      
-      // Remove trailing commas in objects and arrays
-      fixedContent = fixedContent.replaceAll(
-        RegExp(r',(\s*[}\]])'), 
-        r'$1'
-      );
-      
-      // Replace single quotes with double quotes
-      fixedContent = fixedContent.replaceAll("'", '"');
-      
-      // Fix escaped backslashes
-      fixedContent = fixedContent.replaceAll(
-        RegExp(r'([^"\\])\\([^"\\])'), 
-        r'$1\\$2'
-      );
-      
-      // Remove any non-printable characters that could interfere with JSON parsing
-      fixedContent = fixedContent.replaceAll(RegExp(r'[\u0000-\u001F]'), '');
-      
-      try {
-        // Look for array pattern again with fixed content
-        final fixedJsonArrayRegExp = RegExp(r'\[\s*\{.*?\}\s*\]', dotAll: true);
-        final fixedJsonArrayMatch = fixedJsonArrayRegExp.firstMatch(fixedContent);
-        
-        if (fixedJsonArrayMatch != null) {
-          final fixedJsonString = fixedJsonArrayMatch.group(0)!;
-          final List<dynamic> meals = jsonDecode(fixedJsonString);
-          return _createMealsFromJson(meals, source);
-        }
-      } catch (fixedJsonError) {
-        debugPrint('Error parsing fixed JSON: $fixedJsonError');
-      }
-      
-      // If all parsing attempts fail, log detailed failure
-      debugPrint('All parsing methods failed. Content was: ${content.substring(0, content.length > 200 ? 200 : content.length)}...');
-      return [];
+      List<Meal> meals = await _parseMealsFromAiResponse(aiResponse, ingredients);
+
+      // Sort meals by relevance score in descending order
+      meals.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+
+      await _storageService.setCache(
+          _cacheKey, meals.map((m) => m.toJson()).toList());
+      return meals;
     } catch (e) {
-      debugPrint('Error parsing meals from AI response: $e');
-      debugPrint('Content was: ${content.substring(0, content.length > 200 ? 200 : content.length)}...');
-      return [];
+      if (kDebugMode) {
+        print('Error fetching meals from AI: $e. Using fallback.');
+      }
+      return _getFallbackMeals(ingredients);
     }
   }
-  
-  /// Create meal objects from parsed JSON
-  static List<Meal> _createMealsFromJson(List<dynamic> mealsJson, String source) {
-    return mealsJson.map((mealJson) {
-      // Ensure correct types for nutrients
-      final Map<String, dynamic> rawNutrients = mealJson['nutrients'] ?? {};
-      final Map<String, double> nutrients = {};
-      
-      rawNutrients.forEach((key, value) {
-        if (value is int) {
-          nutrients[key] = value.toDouble();
-        } else if (value is double) {
-          nutrients[key] = value;
-        } else if (value is String) {
-          nutrients[key] = double.tryParse(value) ?? 0.0;
+
+  Future<List<Meal>> _parseMealsFromAiResponse(String response, List<String> userIngredients) async {
+    try {
+      if (kDebugMode) {
+        print("MealService: Attempting to parse AI response: $response");
+      }
+      final fixedJsonString = _fixJsonString(response);
+      if (kDebugMode) {
+        print("MealService: Fixed JSON string: $fixedJsonString");
+      }
+
+      if (fixedJsonString.trim().isEmpty || fixedJsonString == "[]") {
+          if (kDebugMode) {
+            print("MealService: Fixed JSON string is empty or an empty array. Attempting to extract from raw text.");
+          }
+          return await _calculateRelevanceForExtractedMeals(_extractMealsFromText(response, userIngredients), userIngredients);
+      }
+
+      List<dynamic> jsonResponse;
+      try {
+        jsonResponse = jsonDecode(fixedJsonString);
+      } catch (e) {
+        if (kDebugMode) {
+          print("MealService: JSON decoding failed after fixing. Error: $e. Fixed string was: $fixedJsonString. Attempting to extract from raw text.");
         }
-      });
+        return await _calculateRelevanceForExtractedMeals(_extractMealsFromText(response, userIngredients), userIngredients);
+      }
       
-      return Meal(
-        id: _uuid.v4(),
-        name: mealJson['name'] ?? 'Unknown Meal',
-        description: mealJson['description'] ?? '',
-        ingredients: List<String>.from(mealJson['ingredients'] ?? []),
-        instructions: List<String>.from(mealJson['instructions'] ?? []),
-        nutrients: nutrients,
-        createdAt: DateTime.now(),
-        source: source,
-      );
-    }).toList();
-  }
-  
-  /// Save meals to local storage
-  static Future<void> _saveMealsToStorage(List<Meal> meals) async {
-    final existingMeals = await loadMealRecommendations();
-    
-    // Add new meals to beginning of list
-    final allMeals = [...meals, ...existingMeals];
-    
-    // Limit to 50 meals to avoid excessive storage use
-    final limitedMeals = allMeals.length > 50 
-        ? allMeals.sublist(0, 50) 
-        : allMeals;
-        
-    final mealsJson = limitedMeals.map((meal) => meal.toJson()).toList();
-    await StorageService.saveData('meal_recommendations', mealsJson);
-  }
-  
-  /// Load meal recommendations from local storage
-  static Future<List<Meal>> loadMealRecommendations() async {
-    final mealsJson = await StorageService.loadData('meal_recommendations');
-    
-    if (mealsJson == null) {
-      return [];
-    }
-    
-    return (mealsJson as List).map((mealJson) => Meal.fromJson(mealJson)).toList();
-  }
-  
-  /// Get fallback meals when AI recommendations fail
-  static List<Meal> _getFallbackMeals({String? mealType, List<String>? availableIngredients}) {
-    final now = DateTime.now();
-    final actualMealType = mealType ?? (now.hour < 11 ? 'breakfast' : (now.hour < 16 ? 'lunch' : 'dinner'));
-    
-    // Generate all possible meals based on meal type
-    List<Meal> allPossibleMeals = [];
-    
-    if (actualMealType == 'breakfast') {
-      allPossibleMeals = [
-        Meal(
-          id: _uuid.v4(),
-          name: 'Protein-Packed Oatmeal Bowl',
-          description: 'A high-protein breakfast that will keep you full all morning, with slow-release carbs for sustained energy.',
-          ingredients: [
-            '1/2 cup rolled oats',
-            '1 scoop protein powder',
-            '1 tbsp chia seeds',
-            '1/2 banana, sliced',
-            '1 tbsp peanut butter',
-            '1/2 cup almond milk',
-          ],
-          instructions: [
-            'Combine oats, protein powder, and chia seeds in a microwave-safe bowl.',
-            'Add almond milk and stir well.',
-            'Microwave for 1-2 minutes, stirring halfway through.',
-            'Top with sliced banana and peanut butter.',
-          ],
-          nutrients: {
-            'calories': 350,
-            'protein': 25,
-            'carbs': 40,
-            'fat': 12,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Greek Yogurt Parfait',
-          description: 'A protein-rich breakfast that supports muscle maintenance while creating a calorie deficit for weight loss.',
-          ingredients: [
-            '1 cup Greek yogurt (0% fat)',
-            '1/4 cup mixed berries',
-            '1 tbsp honey',
-            '2 tbsp low-sugar granola',
-            '1 tbsp sliced almonds',
-          ],
-          instructions: [
-            'Layer half of the yogurt in a glass or bowl.',
-            'Add half of the berries and a sprinkle of granola.',
-            'Add the remaining yogurt and top with remaining berries, granola, and almonds.',
-            'Drizzle with honey before serving.',
-          ],
-          nutrients: {
-            'calories': 280,
-            'protein': 22,
-            'carbs': 30,
-            'fat': 8,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Spinach and Feta Egg White Omelette',
-          description: 'A low-calorie, high-protein breakfast that will keep you satisfied while supporting your weight loss goals.',
-          ingredients: [
-            '4 egg whites',
-            '1 cup fresh spinach, chopped',
-            '2 tbsp feta cheese, crumbled',
-            '1/4 cup cherry tomatoes, halved',
-            '1 tbsp fresh herbs (dill or parsley)',
-            'Salt and pepper to taste',
-            'Cooking spray',
-          ],
-          instructions: [
-            'Whisk egg whites with salt and pepper in a bowl.',
-            'Heat a non-stick pan over medium heat and spray with cooking spray.',
-            'Pour in egg whites and let cook until edges begin to set.',
-            'Add spinach, tomatoes, and feta to one half of the omelette.',
-            'Fold the other half over the filling and cook until eggs are set.',
-            'Garnish with fresh herbs before serving.',
-          ],
-          nutrients: {
-            'calories': 180,
-            'protein': 24,
-            'carbs': 6,
-            'fat': 7,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-      ];
-    } else if (actualMealType == 'lunch') {
-      allPossibleMeals = [
-        Meal(
-          id: _uuid.v4(),
-          name: 'Mediterranean Chickpea Salad',
-          description: 'A protein-rich salad with healthy fats and fiber to keep you satisfied while supporting your weight loss goals.',
-          ingredients: [
-            '1 can chickpeas, drained and rinsed',
-            '1 cucumber, diced',
-            '1 red bell pepper, diced',
-            '1/2 red onion, finely chopped',
-            '1/4 cup feta cheese, crumbled',
-            '2 tbsp olive oil',
-            '1 tbsp lemon juice',
-            '1 tsp dried oregano',
-            'Salt and pepper to taste',
-          ],
-          instructions: [
-            'Combine chickpeas, cucumber, bell pepper, and onion in a large bowl.',
-            'In a small bowl, whisk together olive oil, lemon juice, oregano, salt, and pepper.',
-            'Pour dressing over salad and toss to combine.',
-            'Top with crumbled feta cheese before serving.',
-          ],
-          nutrients: {
-            'calories': 320,
-            'protein': 15,
-            'carbs': 35,
-            'fat': 14,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Turkey and Avocado Lettuce Wraps',
-          description: 'A low-carb lunch option packed with lean protein and healthy fats to boost metabolism and promote weight loss.',
-          ingredients: [
-            '4 large lettuce leaves (romaine or iceberg)',
-            '4 oz sliced turkey breast',
-            '1/2 avocado, sliced',
-            '1/4 cup shredded carrots',
-            '1/4 cup cucumber slices',
-            '2 tbsp hummus',
-            'Red pepper flakes to taste',
-          ],
-          instructions: [
-            'Wash and dry lettuce leaves.',
-            'Spread hummus on each lettuce leaf.',
-            'Divide turkey, avocado, carrots, and cucumber among the leaves.',
-            'Sprinkle with red pepper flakes if desired.',
-            'Roll up lettuce leaves and secure with toothpicks if needed.',
-          ],
-          nutrients: {
-            'calories': 250,
-            'protein': 20,
-            'carbs': 12,
-            'fat': 15,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Quinoa Power Bowl',
-          description: 'A nutrient-dense lunch that provides sustained energy while supporting your weight loss through balanced macronutrients.',
-          ingredients: [
-            '1/2 cup cooked quinoa',
-            '3 oz grilled chicken breast, sliced',
-            '1 cup mixed greens',
-            '1/4 cup roasted sweet potatoes',
-            '1/4 avocado, diced',
-            '2 tbsp pumpkin seeds',
-            '1 tbsp olive oil',
-            '1 tsp balsamic vinegar',
-            'Salt and pepper to taste',
-          ],
-          instructions: [
-            'Place quinoa in a bowl and top with mixed greens.',
-            'Add chicken, roasted sweet potatoes, and avocado.',
-            'Sprinkle with pumpkin seeds.',
-            'Drizzle with olive oil and balsamic vinegar.',
-            'Season with salt and pepper, then toss gently before eating.',
-          ],
-          nutrients: {
-            'calories': 400,
-            'protein': 25,
-            'carbs': 30,
-            'fat': 18,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-      ];
-    } else if (actualMealType == 'snack') {
-      allPossibleMeals = [
-        Meal(
-          id: _uuid.v4(),
-          name: 'Greek Yogurt with Berries',
-          description: 'A protein-rich snack that satisfies sweet cravings and helps control hunger between meals.',
-          ingredients: [
-            '1/2 cup Greek yogurt (0% fat)',
-            '1/4 cup mixed berries',
-            '1 tsp honey',
-            '1 tbsp sliced almonds',
-          ],
-          instructions: [
-            'Place Greek yogurt in a bowl.',
-            'Top with mixed berries and almonds.',
-            'Drizzle with honey before serving.',
-          ],
-          nutrients: {
-            'calories': 130,
-            'protein': 15,
-            'carbs': 12,
-            'fat': 3,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Apple Slices with Almond Butter',
-          description: 'A balanced snack combining fiber and protein to maintain stable blood sugar and support weight loss.',
-          ingredients: [
-            '1 medium apple, sliced',
-            '1 tbsp almond butter',
-            'Dash of cinnamon',
-          ],
-          instructions: [
-            'Slice apple into wedges.',
-            'Serve with almond butter for dipping.',
-            'Sprinkle with cinnamon for extra flavor.',
-          ],
-          nutrients: {
-            'calories': 160,
-            'protein': 4,
-            'carbs': 20,
-            'fat': 8,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Vegetable Sticks with Hummus',
-          description: 'A low-calorie snack that provides essential nutrients and fiber while keeping you full between meals.',
-          ingredients: [
-            '1 cup mixed vegetable sticks (carrot, cucumber, bell pepper)',
-            '2 tbsp hummus',
-            'Pinch of paprika',
-            'Fresh lemon juice (optional)',
-          ],
-          instructions: [
-            'Wash and cut vegetables into sticks.',
-            'Serve with hummus for dipping.',
-            'Sprinkle hummus with paprika and a squeeze of lemon juice if desired.',
-          ],
-          nutrients: {
-            'calories': 120,
-            'protein': 5,
-            'carbs': 12,
-            'fat': 6,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-      ];
-    } else {
-      // dinner or other meal types
-      allPossibleMeals = [
-        Meal(
-          id: _uuid.v4(),
-          name: 'Baked Salmon with Roasted Vegetables',
-          description: 'A high-protein, low-carb dinner rich in omega-3 fatty acids, perfect for supporting weight loss while providing essential nutrients.',
-          ingredients: [
-            '5 oz salmon fillet',
-            '1 cup broccoli florets',
-            '1 cup cauliflower florets',
-            '1 medium carrot, sliced',
-            '1 tbsp olive oil',
-            '1 clove garlic, minced',
-            '1 tsp lemon zest',
-            '1/2 lemon, juiced',
-            'Salt and pepper to taste',
-            'Fresh dill (optional)',
-          ],
-          instructions: [
-            'Preheat oven to 400°F (200°C).',
-            'Toss vegetables with olive oil, garlic, salt, and pepper on a baking sheet.',
-            'Place salmon on the same sheet, skin-side down.',
-            'Season salmon with salt, pepper, and lemon zest.',
-            'Bake for 15-20 minutes until salmon is cooked through and vegetables are tender.',
-            'Squeeze lemon juice over everything and garnish with dill if using.',
-          ],
-          nutrients: {
-            'calories': 380,
-            'protein': 30,
-            'carbs': 15,
-            'fat': 22,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Zucchini Noodles with Turkey Meatballs',
-          description: 'A low-carb alternative to traditional spaghetti that satisfies cravings while keeping calories in check for weight loss.',
-          ingredients: [
-            '2 medium zucchini, spiralized',
-            '4 oz ground turkey',
-            '1 tbsp almond flour',
-            '1 tbsp grated Parmesan cheese',
-            '1/2 tsp Italian seasoning',
-            '1 clove garlic, minced',
-            '1/2 cup marinara sauce (low-sugar)',
-            '1 tbsp fresh basil, chopped',
-            'Salt and pepper to taste',
-            '1 tsp olive oil',
-          ],
-          instructions: [
-            'In a bowl, combine ground turkey, almond flour, Parmesan, Italian seasoning, half the garlic, salt, and pepper.',
-            'Form mixture into meatballs (about 1 inch in diameter).',
-            'Heat olive oil in a pan over medium heat and cook meatballs until browned and cooked through.',
-            'In another pan, sauté remaining garlic for 30 seconds, then add zucchini noodles and cook for 2-3 minutes.',
-            'Heat marinara sauce separately and pour over zucchini noodles.',
-            'Top with meatballs and garnish with fresh basil.',
-          ],
-          nutrients: {
-            'calories': 320,
-            'protein': 28,
-            'carbs': 15,
-            'fat': 16,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-        Meal(
-          id: _uuid.v4(),
-          name: 'Stuffed Bell Peppers with Ground Chicken',
-          description: 'A protein-rich dinner loaded with vegetables that supports metabolism and muscle retention during weight loss.',
-          ingredients: [
-            '2 large bell peppers, halved and seeded',
-            '6 oz ground chicken',
-            '1/3 cup cooked brown rice',
-            '1/4 cup black beans, rinsed',
-            '1/4 cup corn kernels',
-            '2 tbsp red onion, diced',
-            '1/4 cup salsa',
-            '1/2 tsp cumin',
-            '1/4 tsp chili powder',
-            '2 tbsp shredded low-fat cheddar cheese',
-            'Fresh cilantro for garnish',
-          ],
-          instructions: [
-            'Preheat oven to 375°F (190°C).',
-            'Cook ground chicken in a pan until no longer pink.',
-            'Add rice, beans, corn, onion, salsa, cumin, and chili powder, and stir to combine.',
-            'Place bell pepper halves on a baking sheet and fill with the chicken mixture.',
-            'Top with shredded cheese and bake for 20-25 minutes until peppers are tender.',
-            'Garnish with fresh cilantro before serving.',
-          ],
-          nutrients: {
-            'calories': 360,
-            'protein': 32,
-            'carbs': 28,
-            'fat': 12,
-          },
-          createdAt: now,
-          source: 'fallback',
-        ),
-      ];
-    }
-    
-    // If no ingredients are specified, return all possible meals for the meal type
-    if (availableIngredients == null || availableIngredients.isEmpty) {
-      return allPossibleMeals;
-    }
-    
-    // Filter meals based on available ingredients
-    // A meal is considered suitable if it contains at least one of the available ingredients
-    final filteredMeals = allPossibleMeals.where((meal) {
-      final lowerCaseIngredients = availableIngredients.map((e) => e.toLowerCase()).toList();
-      
-      // Check if any of the meal's ingredients contain the available ingredients
-      for (final ingredient in meal.ingredients) {
-        final lowerCaseIngredient = ingredient.toLowerCase();
-        for (final availableIngredient in lowerCaseIngredients) {
-          if (lowerCaseIngredient.contains(availableIngredient)) {
-            return true;
+      if (kDebugMode) {
+        print("MealService: Successfully decoded JSON: $jsonResponse");
+      }
+
+      List<Meal> meals = [];
+      if (jsonResponse is List) {
+        for (var mealJson in jsonResponse) {
+          try {
+            if (mealJson is Map<String, dynamic>) {
+              Meal meal = Meal.fromJson(mealJson);
+              // Relevance score calculation moved to _calculateRelevanceForExtractedMeals or done after list construction
+              meals.add(meal);
+            } else {
+                if (kDebugMode) {
+                    print("MealService: Encountered non-map item in JSON list: $mealJson. Trying to extract from its string representation.");
+                }
+                List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
+                meals.addAll(extractedFromItem); // Add first, calculate relevance later
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print("MealService: Error processing individual meal from JSON list item: $mealJson. Error: $e. Attempting text extraction for this item.");
+            }
+            List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
+            meals.addAll(extractedFromItem); // Add first, calculate relevance later
           }
         }
+      } else if (jsonResponse is Map<String, dynamic>) { // Handle if AI returns a single JSON object instead of a list
+          if (kDebugMode) {
+              print("MealService: Decoded JSON is a single map, not a list: $jsonResponse. Processing as a single meal.");
+          }
+          try {
+            Meal meal = Meal.fromJson(jsonResponse);
+            meals.add(meal);
+          } catch (e) {
+            if (kDebugMode) {
+              print("MealService: Error parsing single meal from JSON map: $jsonResponse. Error: $e. Attempting text extraction.");
+            }
+            List<Meal> extractedFromSingleMap = _extractMealsFromText(jsonResponse.toString(), userIngredients);
+            meals.addAll(extractedFromSingleMap);
+          }
+      } else {
+          if (kDebugMode) {
+              print("MealService: Decoded JSON is not a list or map: $jsonResponse. Trying to extract from its string representation.");
+          }
+          List<Meal> extractedFromUnknownFormat = _extractMealsFromText(jsonResponse.toString(), userIngredients);
+          meals.addAll(extractedFromUnknownFormat);
       }
-      return false;
-    }).toList();
+
+      // Calculate relevance for all meals collected so far
+      await _calculateRelevanceForExtractedMeals(meals, userIngredients);
+
+      if (meals.isEmpty && response.trim().isNotEmpty) {
+        if (kDebugMode) {
+          print("MealService: No meals parsed from JSON structure after initial attempts, trying to extract from raw text response as a fallback.");
+        }
+        List<Meal> extractedFallback = _extractMealsFromText(response, userIngredients);
+        meals = await _calculateRelevanceForExtractedMeals(extractedFallback, userIngredients);
+      }
+      
+      if (kDebugMode) {
+        print("MealService: Parsed ${meals.length} meals after all attempts in try block.");
+      }
+      return meals;
+
+    } catch (e, s) { 
+      if (kDebugMode) {
+        print('MealService: Outer catch - Error parsing meals from AI response: $e. Stacktrace: $s. Response was: $response');
+        print('MealService: Outer catch - Attempting to extract meals from text due to error.');
+      }
+      // Fallback extraction and relevance calculation
+      List<Meal> extractedOnError = _extractMealsFromText(response, userIngredients);
+      return await _calculateRelevanceForExtractedMeals(extractedOnError, userIngredients);
+    }
+  }
+
+  String _fixJsonString(String jsonString) {
+    String fixed = jsonString.trim();
+
+    // Remove potential markdown code block fences
+    if (fixed.startsWith("```json")) {
+      fixed = fixed.substring(7);
+      if (fixed.endsWith("```")) {
+        fixed = fixed.substring(0, fixed.length - 3);
+      }
+    } else if (fixed.startsWith("```")) {
+      fixed = fixed.substring(3);
+      if (fixed.endsWith("```")) {
+        fixed = fixed.substring(0, fixed.length - 3);
+      }
+    }
+    fixed = fixed.trim();
+
+    if (fixed.isEmpty) {
+        return "[]"; // Return empty JSON array string if original string was empty or whitespace
+    }
+
+    // Attempt to detect if it's already a valid JSON array or object before wrapping
+    bool looksLikeJsonArray = fixed.startsWith('[') && fixed.endsWith(']');
+    bool looksLikeJsonObject = fixed.startsWith('{') && fixed.endsWith('}');
+
+    if (!looksLikeJsonArray && !looksLikeJsonObject) {
+        // If it doesn't look like a JSON array or object, try to wrap it as an array
+        // This is a common case if the AI returns multiple JSON objects not enclosed in an array
+        fixed = '[$fixed]'; 
+        // This might create issues if `fixed` was a single object, e.g. `{[...]}`. 
+        // A more robust solution would be to try parsing, and if it fails and it's not an array, then wrap.
+        // For now, this simpler approach is taken.
+    } else if (looksLikeJsonArray && fixed == "[]") {
+        // If it's an empty array string, it's fine.
+    } else if (looksLikeJsonObject) {
+        // If it's a single object, wrap it in an array for consistent processing.
+        fixed = '[$fixed]';
+    }
+
+    // Regex replacements for common JSON issues
+    // Ensure keys are double-quoted
+    fixed = fixed.replaceAllMapped(RegExp(r'([{,]\s*)'?([a-zA-Z0-9_]+)'?(\s*):'), (match) {
+      return '${match[1]}"${match[2]}"${match[3]}:';
+    });
+    // Ensure string values are double-quoted (handles simple cases)
+    fixed = fixed.replaceAllMapped(RegExp(r':\s*\'([^\']*)\''), (match) {
+      return ':"${match[1]}"';
+    });
+
+    // Remove trailing commas before ']' or '}'
+    fixed = fixed.replaceAll(RegExp(r',(\s*(?=]))'), r'$1'); // remove comma before closing bracket
+    fixed = fixed.replaceAll(RegExp(r',(\s*(?=}))'), r'$1'); // remove comma before closing brace
     
-    // If we have filtered meals, return those; otherwise, fall back to all meals
-    return filteredMeals.isNotEmpty ? filteredMeals : allPossibleMeals;
+    // Attempt to fix unquoted literal values (true, false, null, numbers) if they were accidentally quoted
+    // This is less common but can happen.
+    // fixed = fixed.replaceAllMapped(RegExp(r':\s*"(true|false|null|-?\d*\.?\d+)"\s*([,}])'), (match) {
+    //     return ':${match[1]}${match[2]}';
+    // });
+
+    // Attempt to fix unquoted string values that are simple words
+    fixed = fixed.replaceAllMapped(RegExp(r':\s*([a-zA-Z_][a-zA-Z0-9_\s-]*[a-zA-Z0-9_])(\s*[,}])'), (match) {
+        // Check if the matched group is not true, false, or null before quoting
+        String potentialValue = match[1]!;
+        if (potentialValue != 'true' && potentialValue != 'false' && potentialValue != 'null' && !RegExp(r'^-?\d*\.?\d+$').hasMatch(potentialValue)) {
+            return ':"$potentialValue"${match[2]}';
+        }
+        return ':$potentialValue${match[2]}'; // Return as is if it's a boolean, null, or number
+    });
+
+    return fixed;
+  }
+
+  // Helper method to calculate relevance scores for a list of meals
+  Future<List<Meal>> _calculateRelevanceForExtractedMeals(List<Meal> meals, List<String> userIngredients) async {
+    for (var meal in meals) {
+        meal.relevanceScore = await _ingredientService.calculateIngredientMatchScore(meal.ingredients, userIngredients);
+    }
+    return meals;
+  }
+
+  List<Meal> _extractMealsFromText(String text, List<String> userIngredients) {
+    if (kDebugMode) {
+      print("Attempting to extract meals from text: $text");
+    }
+    final List<Meal> meals = [];
+    // Regex to find meal structures, more flexible
+    final RegExp mealRegex = RegExp(
+        r"{\s*['""]?name['""]?\s*:\s*['""]([^'""]+)['""]\s*,\s*['""]?description['""]?\s*:\s*['""]([^'""]+)['""]\s*,\s*['""]?ingredients['""]?\s*:\s*\[([^\]]+)\]\s*,\s*['""]?calories['""]?\s*:\s*(\d+)\s*}",
+        caseSensitive: false,
+        multiLine: true);
+
+    final matches = mealRegex.allMatches(text);
+
+    if (kDebugMode) {
+      print("Found ${matches.length} potential meals via regex.");
+    }
+
+    for (final match in matches) {
+      try {
+        final name = match.group(1)?.trim() ?? 'Unknown Meal';
+        final description = match.group(2)?.trim() ?? 'No description';
+        final ingredientsString = match.group(3) ?? '';
+        final calories = int.tryParse(match.group(4) ?? '0') ?? 0;
+
+        final ingredientsList = ingredientsString
+            .split(',')
+            .map((e) => e.replaceAll(RegExp(r"['""]"), "").trim())
+            .where((i) => i.isNotEmpty)
+            .toList();
+        
+        // Basic relevance for extracted meals, can be refined
+        double relevance = 0.0; 
+        // Actual calculation will be done after creating the Meal object
+        // and calling _ingredientService.calculateIngredientMatchScore
+
+        meals.add(Meal(
+          id: Random().nextInt(100000).toString(), // Generate a temporary ID
+          name: name,
+          description: description,
+          ingredients: ingredientsList,
+          calories: calories,
+          isFavorite: false,
+          relevanceScore: relevance, // Placeholder, will be updated
+          feedback: '',
+        ));
+      } catch (e) {
+        if (kDebugMode) {
+          print("Error extracting a meal with regex: $e. Match: ${match.input}");
+        }
+      }
+    }
+     if (kDebugMode) {
+      print("Extracted ${meals.length} meals from text.");
+    }
+    return meals;
+  }
+
+  // Helper function for Levenshtein distance (if needed for _fixJsonString or _extractMealsFromText, though not directly used now)
+  int _min(int a, int b, int c) {
+    return min(min(a, b), c);
+  }
+
+
+  Future<List<Meal>> _getFallbackMeals(List<String> userIngredients) async {
+    if (kDebugMode) {
+      print('Providing fallback meals.');
+    }
+    List<Meal> fallback = [
+      Meal(id: 'fb1', name: 'Fallback Salad', description: 'A simple fallback salad.', ingredients: ['lettuce', 'tomato', 'cucumber'], calories: 150, relevanceScore: 0.0),
+      Meal(id: 'fb2', name: 'Fallback Pasta', description: 'Basic pasta with tomato sauce.', ingredients: ['pasta', 'tomato sauce', 'cheese'], calories: 400, relevanceScore: 0.0),
+      Meal(id: 'fb3', name: 'Fallback Chicken and Rice', description: 'Plain chicken and rice.', ingredients: ['chicken', 'rice', 'broccoli'], calories: 500, relevanceScore: 0.0),
+    ];
+    // Calculate relevance for fallback meals
+    for (var meal in fallback) {
+        meal.relevanceScore = await _ingredientService.calculateIngredientMatchScore(meal.ingredients, userIngredients);
+    }
+    // Sort fallback meals by relevance
+    fallback.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+    return fallback;
+  }
+
+  Future<void> toggleFavorite(Meal meal) async {
+    meal.isFavorite = !meal.isFavorite;
+    // This is a simplified example. In a real app, you\'d persist this change.
+    // For instance, update it in _storageService or a database.
+    if (kDebugMode) {
+      print('Meal ${meal.name} favorite status: ${meal.isFavorite}');
+    }
+    // Example: Persist all meals if they are stored together, or update a specific entry
+    // This requires knowing how meals are stored and identified for updates.
+    // For now, we assume the meal object is updated in memory and UI reflects this.
+  }
+
+  Future<void> recordMealFeedback(Meal meal, String feedback) async {
+    meal.feedback = feedback;
+    // Persist this feedback.
+    if (kDebugMode) {
+      print('Feedback for ${meal.name}: $feedback');
+    }
+    // Example: _storageService.updateMealFeedback(meal.id, feedback);
+  }
+
+  // Placeholder for fetching a single meal, e.g., for a detail view
+  Future<Meal?> getMealById(String id) async {
+    // This would typically fetch from a database or a more persistent cache
+    // For now, it\'s a placeholder.
+    if (kDebugMode) {
+      print('Fetching meal by ID: $id (placeholder)');
+    }
+    // Simulate fetching by trying to find it in a general cache if available
+    // This is not robust for individual meal fetching.
+    final cachedData = await _storageService.getCache(_cacheKey);
+    if (cachedData != null) {
+      final List<dynamic> mealJson = cachedData['data'];
+      final mealData = mealJson.firstWhere((m) => m['id'] == id, orElse: () => null);
+      if (mealData != null) {
+        return Meal.fromJson(mealData as Map<String, dynamic>);
+      }
+    }
+    return null;
   }
 }
