@@ -60,13 +60,12 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<WeightProvider>(
+                          children: [                            Consumer<WeightProvider>(
                               builder: (context, weightProvider, child) {
                                 final latestEntry = weightProvider.latestEntry;
                                 return Text(
                                   latestEntry != null
-                                      ? '\ kg'
+                                      ? '${latestEntry.weightKg.toStringAsFixed(1)} kg'
                                       : '-- kg',
                                   style: const TextStyle(
                                     fontSize: 32,
