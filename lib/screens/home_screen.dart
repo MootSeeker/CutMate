@@ -5,7 +5,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:cutmate/screens/weight_entry_screen.dart';
 import 'package:cutmate/screens/main_screen.dart';
+import 'package:cutmate/screens/settings_screen.dart';
 import 'package:cutmate/services/weight_provider.dart';
+import 'package:cutmate/services/settings_provider.dart';
 import 'package:cutmate/models/weight_entry.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -93,11 +95,20 @@ class HomeScreen extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(fontSize: 9, color: Colors.grey),
-                  );
+                getTitlesWidget: (value, meta) {                  final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                  if (settingsProvider.weightUnit == 'kg') {
+                    return Text(
+                      value.toInt().toString(),
+                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                    );
+                  } else {
+                    // Convert to lbs for display
+                    final lbsValue = SettingsProvider.kgToLbs(value);
+                    return Text(
+                      lbsValue.round().toString(),
+                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                    );
+                  }
                 },
                 interval: 1,
               ),
@@ -134,14 +145,18 @@ class HomeScreen extends StatelessWidget {
           minY: minY,
           maxY: maxY,
           lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+            touchTooltipData: LineTouchTooltipData(              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                final unit = settingsProvider.weightUnitSuffix;
+                
                 return touchedBarSpots.map((barSpot) {
                   final flSpot = barSpot;
                   final date = sortedEntries[flSpot.x.toInt()].date;
+                  final weight = settingsProvider.convertToDisplayUnit(flSpot.y);
+                  
                   return LineTooltipItem(
-                    '${DateFormat('MMM d').format(date)}\n${flSpot.y.toStringAsFixed(1)} kg',
+                    '${DateFormat('MMM d').format(date)}\n${weight.toStringAsFixed(1)} $unit',
                     const TextStyle(color: Colors.white),
                   );
                 }).toList();
@@ -196,11 +211,14 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CutMate'),
-        actions: [
-          IconButton(
+        actions: [          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // Navigate to settings screen
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -247,15 +265,23 @@ class HomeScreen extends StatelessWidget {
                               builder: (context, weightProvider, child) {
                                 final latestEntry = weightProvider.latestEntry;                                return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      latestEntry != null
-                                          ? '${latestEntry.weightKg.toStringAsFixed(1)} kg'
-                                          : '-- kg',
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  children: [                                    Consumer<SettingsProvider>(
+                                      builder: (context, settingsProvider, _) {
+                                        final unit = settingsProvider.weightUnitSuffix;
+                                        final weight = latestEntry != null
+                                          ? settingsProvider.convertToDisplayUnit(latestEntry.weightKg)
+                                          : null;
+                                        
+                                        return Text(
+                                          weight != null
+                                              ? '${weight.toStringAsFixed(1)} $unit'
+                                              : '-- $unit',
+                                          style: const TextStyle(
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        );
+                                      },
                                     ),
                                     if (latestEntry != null)
                                       Text(
@@ -380,17 +406,22 @@ class HomeScreen extends StatelessWidget {
                                                 : Colors.grey,
                                         size: 16,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${difference.abs().toStringAsFixed(1)} kg',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: difference < 0 
-                                              ? const Color(0xFF10B981) // success color
-                                              : difference > 0 
-                                                  ? const Color(0xFFF59E0B) // warning color
-                                                  : Colors.grey,
-                                        ),
+                                      const SizedBox(width: 4),                                      Consumer<SettingsProvider>(
+                                        builder: (context, settingsProvider, _) {
+                                          final convertedDiff = settingsProvider.convertToDisplayUnit(difference.abs());
+                                          final unit = settingsProvider.weightUnitSuffix;
+                                          return Text(
+                                            '${convertedDiff.toStringAsFixed(1)} $unit',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: difference < 0 
+                                                  ? const Color(0xFF10B981) // success color
+                                                  : difference > 0 
+                                                      ? const Color(0xFFF59E0B) // warning color
+                                                      : Colors.grey,
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ],
                                   );

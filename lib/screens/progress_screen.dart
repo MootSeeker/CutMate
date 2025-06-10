@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:cutmate/models/weight_entry.dart';
 import 'package:cutmate/services/weight_provider.dart';
+import 'package:cutmate/services/settings_provider.dart';
 import 'package:cutmate/constants/app_constants.dart';
 
 /// Screen for displaying weight progress charts and stats
@@ -125,17 +126,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       color: Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    totalChange != null ? '${totalChange.toStringAsFixed(1)} kg' : '--',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,                      color: totalChange != null && totalChange < 0
-                          ? const Color(0xFF10B981) // success color
-                          : totalChange != null && totalChange > 0
-                              ? const Color(0xFFF59E0B) // warning color
-                              : null,
-                    ),
+                  const SizedBox(height: 4),                  Consumer<SettingsProvider>(
+                    builder: (context, settingsProvider, _) {
+                      final unit = settingsProvider.weightUnitSuffix;
+                      final displayChange = totalChange != null 
+                          ? settingsProvider.convertToDisplayUnit(totalChange)
+                          : null;
+                          
+                      return Text(
+                        displayChange != null ? '${displayChange.toStringAsFixed(1)} $unit' : '--',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: totalChange != null && totalChange < 0
+                              ? const Color(0xFF10B981) // success color
+                              : totalChange != null && totalChange > 0
+                                  ? const Color(0xFFF59E0B) // warning color
+                                  : null,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -149,8 +159,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+                children: [                  Text(
                     'Last $_selectedTimePeriod Days',
                     style: const TextStyle(
                       fontSize: 14,
@@ -158,16 +167,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    periodChange != null ? '${periodChange.toStringAsFixed(1)} kg' : '--',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,                      color: periodChange != null && periodChange < 0
-                          ? const Color(0xFF10B981) // success color
-                          : periodChange != null && periodChange > 0
-                              ? const Color(0xFFF59E0B) // warning color
-                              : null,
-                    ),
+                  Consumer<SettingsProvider>(
+                    builder: (context, settingsProvider, _) {
+                      final unit = settingsProvider.weightUnitSuffix;
+                      final displayChange = periodChange != null 
+                          ? settingsProvider.convertToDisplayUnit(periodChange)
+                          : null;
+                          
+                      return Text(
+                        displayChange != null ? '${displayChange.toStringAsFixed(1)} $unit' : '--',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: periodChange != null && periodChange < 0
+                              ? const Color(0xFF10B981) // success color
+                              : periodChange != null && periodChange > 0
+                                  ? const Color(0xFFF59E0B) // warning color
+                                  : null,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -291,9 +310,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 40,
-                getTitlesWidget: (value, meta) {
+                getTitlesWidget: (value, meta) {                  final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                  final displayValue = settingsProvider.weightUnit == 'kg'
+                      ? value.toInt().toString()
+                      : SettingsProvider.kgToLbs(value).round().toString();
                   return Text(
-                    value.toInt().toString(),
+                    displayValue,
                     style: const TextStyle(fontSize: 10),
                   );
                 },
@@ -382,9 +404,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   } else {
                     dateFormat = 'MMM d, yyyy';
                   }
+                    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                  final unit = settingsProvider.weightUnitSuffix;
+                  final weight = settingsProvider.convertToDisplayUnit(flSpot.y);
                   
                   return LineTooltipItem(
-                    '${DateFormat(dateFormat).format(date)}\n${flSpot.y.toStringAsFixed(1)} kg',
+                    '${DateFormat(dateFormat).format(date)}\n${weight.toStringAsFixed(1)} $unit',
                     const TextStyle(color: Colors.white, fontSize: 12),
                   );
                 }).toList();
@@ -450,8 +475,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
         if (index < entries.length - 1) {
           change = entry.weightKg - entries[index + 1].weightKg;
           // Only show non-zero changes
-          if (change != 0) {
-            changeText = change > 0 ? '+${change.toStringAsFixed(1)} kg' : '${change.toStringAsFixed(1)} kg';
+          if (change != 0) {                    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                    final unit = settingsProvider.weightUnitSuffix;
+                    final displayChange = settingsProvider.convertToDisplayUnit(change);
+                    changeText = change > 0 ? '+${displayChange.toStringAsFixed(1)} $unit' : '${displayChange.toStringAsFixed(1)} $unit';
           }
         }
         
@@ -464,11 +491,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${entry.weightKg.toStringAsFixed(1)} kg',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),                if (changeText != null && change != null)
+              children: [                Consumer<SettingsProvider>(
+                  builder: (context, settingsProvider, _) {
+                    final unit = settingsProvider.weightUnitSuffix;
+                    final weight = settingsProvider.convertToDisplayUnit(entry.weightKg);
+                    
+                    return Text(
+                      '${weight.toStringAsFixed(1)} $unit',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    );
+                  },
+                ),if (changeText != null && change != null)
                   Text(
                     changeText,
                     style: TextStyle(

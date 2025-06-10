@@ -32,8 +32,7 @@ class AppConstants {
   
   // Chart time periods
   static const List<int> chartTimePeriods = [7, 30, 60, 90]; // Available time periods for charts in days
-  
-  // Meal related
+    // Meal related
   static const List<String> mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
   static const Map<String, String> mealTypeEmojis = {
     'breakfast': '🍳',
@@ -41,4 +40,10 @@ class AppConstants {
     'dinner': '🍽️',
     'snack': '🥪',
   };
+  
+  // Notification related
+  static const int weeklyReminderNotificationId = 1001;
+  static const String weeklyReminderChannelId = 'weekly_reminder_channel';
+  static const String weeklyReminderChannelName = 'Weekly Reminders';
+  static const String weeklyReminderChannelDescription = 'Weekly weight tracking reminders';
 }
