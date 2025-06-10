@@ -2,7 +2,8 @@ import 'dart:convert';
 
 /// Settings model for the CutMate app
 class AppSettings {
-  final bool useDarkMode;
+  // For darkMode: null = system default, true = dark, false = light
+  final String? themeMode; // 'system', 'dark', or 'light'
   final String weightUnit; // 'kg' or 'lbs'
   final bool showWeightChangeIndicators;
   final bool enableWeeklyReminders;
@@ -10,23 +11,22 @@ class AppSettings {
   
   /// Create app settings
   AppSettings({
-    this.useDarkMode = false,
+    this.themeMode = 'system',
     this.weightUnit = 'kg',
     this.showWeightChangeIndicators = true,
     this.enableWeeklyReminders = true,
     this.defaultChartPeriod = 7,
   });
-  
-  /// Create a copy of this settings with some changes
+    /// Create a copy of this settings with some changes
   AppSettings copyWith({
-    bool? useDarkMode,
+    String? themeMode,
     String? weightUnit,
     bool? showWeightChangeIndicators,
     bool? enableWeeklyReminders,
     int? defaultChartPeriod,
   }) {
     return AppSettings(
-      useDarkMode: useDarkMode ?? this.useDarkMode,
+      themeMode: themeMode ?? this.themeMode,
       weightUnit: weightUnit ?? this.weightUnit,
       showWeightChangeIndicators: showWeightChangeIndicators ?? this.showWeightChangeIndicators,
       enableWeeklyReminders: enableWeeklyReminders ?? this.enableWeeklyReminders,
@@ -37,7 +37,7 @@ class AppSettings {
   /// Convert settings to JSON
   Map<String, dynamic> toJson() {
     return {
-      'useDarkMode': useDarkMode,
+      'themeMode': themeMode,
       'weightUnit': weightUnit,
       'showWeightChangeIndicators': showWeightChangeIndicators,
       'enableWeeklyReminders': enableWeeklyReminders,
@@ -47,8 +47,17 @@ class AppSettings {
   
   /// Create settings from JSON
   factory AppSettings.fromJson(Map<String, dynamic> json) {
+    // Handle legacy format where we had useDarkMode instead of themeMode
+    String? themeMode;
+    if (json.containsKey('useDarkMode')) {
+      final bool useDarkMode = json['useDarkMode'] ?? false;
+      themeMode = useDarkMode ? 'dark' : 'light';
+    } else {
+      themeMode = json['themeMode'] ?? 'system';
+    }
+    
     return AppSettings(
-      useDarkMode: json['useDarkMode'] ?? false,
+      themeMode: themeMode,
       weightUnit: json['weightUnit'] ?? 'kg',
       showWeightChangeIndicators: json['showWeightChangeIndicators'] ?? true,
       enableWeeklyReminders: json['enableWeeklyReminders'] ?? true,

@@ -51,14 +51,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 final settings = settingsProvider.settings;
                 
                 return ListView(
-                  children: [
-                    // Appearance section
+                  children: [                    // Appearance section
                     _buildSectionHeader('Appearance'),
-                    SwitchListTile(
-                      title: const Text('Dark Mode'),
-                      subtitle: const Text('Use dark theme'),
-                      value: settings.useDarkMode,
-                      onChanged: (value) => settingsProvider.setDarkMode(value),
+                    ListTile(
+                      title: const Text('Theme'),
+                      subtitle: Text('Control the app appearance'),
+                      trailing: DropdownButton<String>(
+                        value: settings.themeMode,
+                        onChanged: (value) {
+                          if (value != null) {
+                            settingsProvider.setThemeMode(value);
+                          }
+                        },                        items: const [
+                          DropdownMenuItem(value: 'system', child: Text('System Default')),
+                          DropdownMenuItem(value: 'light', child: Text('Light')),
+                          DropdownMenuItem(value: 'dark', child: Text('Dark')),
+                        ],
+                      ),
                     ),
                     
                     const Divider(),

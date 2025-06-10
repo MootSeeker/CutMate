@@ -48,12 +48,9 @@ class _CutMateAppState extends State<CutMateApp> {
       builder: (context, settingsProvider, child) {
         return MaterialApp(
           title: AppConstants.appName,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme(),
+          debugShowCheckedModeBanner: false,          theme: AppTheme.lightTheme(),
           darkTheme: AppTheme.darkTheme(),
-          themeMode: settingsProvider.isDarkMode 
-            ? ThemeMode.dark 
-            : ThemeMode.light, // Use settings for theme mode
+          themeMode: settingsProvider.getThemeMode(), // Use settings for theme mode
           home: const MainScreen(),
         );
       },

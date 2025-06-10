@@ -12,9 +12,8 @@ class SettingsProvider extends ChangeNotifier {
   
   /// Get current app settings
   AppSettings get settings => _settings;
-  
-  /// Whether dark mode is enabled
-  bool get isDarkMode => _settings.useDarkMode;
+    /// Get the current theme mode
+  String get themeMode => _settings.themeMode ?? 'system';
   
   /// The current weight unit (kg or lbs)
   String get weightUnit => _settings.weightUnit;
@@ -50,12 +49,11 @@ class SettingsProvider extends ChangeNotifier {
     _initialized = true;
     notifyListeners();
   }
-  
-  /// Update dark mode setting
-  Future<void> setDarkMode(bool value) async {
-    if (_settings.useDarkMode == value) return;
+    /// Update theme mode setting
+  Future<void> setThemeMode(String value) async {
+    if (_settings.themeMode == value) return;
     
-    final newSettings = _settings.copyWith(useDarkMode: value);
+    final newSettings = _settings.copyWith(themeMode: value);
     await _updateSettings(newSettings);
   }
   
@@ -106,10 +104,17 @@ class SettingsProvider extends ChangeNotifier {
     await StorageService.saveData(AppConstants.appSettingsKey, _settings.toJson());
     notifyListeners();
   }
-  
-  /// Get theme mode based on settings
+    /// Get theme mode based on settings
   ThemeMode getThemeMode() {
-    return _settings.useDarkMode ? ThemeMode.dark : ThemeMode.light;
+    switch(_settings.themeMode) {
+      case 'dark':
+        return ThemeMode.dark;
+      case 'light':
+        return ThemeMode.light;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
   }
   
   /// Convert weight from kg to current unit (kg or lbs)
