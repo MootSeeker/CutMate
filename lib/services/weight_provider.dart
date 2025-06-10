@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:cutmate/models/weight_entry.dart';
 import 'package:cutmate/services/storage_service.dart';
+import 'package:cutmate/constants/app_constants.dart';
 
 /// Provider class for weight entry data
 class WeightProvider extends ChangeNotifier {
@@ -67,10 +68,9 @@ class WeightProvider extends ChangeNotifier {
     }
     return null;
   }
-  
-  /// Get the last 7 days of entries for the chart
+    /// Get the last 7 days of entries for the chart
   List<WeightEntry> get last7DaysEntries {
-    final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+    final sevenDaysAgo = DateTime.now().subtract(Duration(days: AppConstants.homeChartDurationDays));
     return _entries.where((entry) => entry.date.isAfter(sevenDaysAgo)).toList();
   }
 }

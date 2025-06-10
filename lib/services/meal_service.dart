@@ -91,50 +91,28 @@ class MealService {
       }
 
       List<Meal> meals = [];
-      if (jsonResponse is List) {
-        for (var mealJson in jsonResponse) {
-          try {
-            if (mealJson is Map<String, dynamic>) {
-              Meal meal = Meal.fromJson(mealJson);
-              // Relevance score calculation moved to _calculateRelevanceForExtractedMeals or done after list construction
-              meals.add(meal);
-            } else {
-                if (kDebugMode) {
-                    print("MealService: Encountered non-map item in JSON list: $mealJson. Trying to extract from its string representation.");
-                }
-                List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
-                meals.addAll(extractedFromItem); // Add first, calculate relevance later
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print("MealService: Error processing individual meal from JSON list item: $mealJson. Error: $e. Attempting text extraction for this item.");
-            }
-            List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
-            meals.addAll(extractedFromItem); // Add first, calculate relevance later
-          }
-        }
-      } else if (jsonResponse is Map<String, dynamic>) { // Handle if AI returns a single JSON object instead of a list
-          if (kDebugMode) {
-              print("MealService: Decoded JSON is a single map, not a list: $jsonResponse. Processing as a single meal.");
-          }
-          try {
-            Meal meal = Meal.fromJson(jsonResponse);
+      for (var mealJson in jsonResponse) {
+        try {
+          if (mealJson is Map<String, dynamic>) {
+            Meal meal = Meal.fromJson(mealJson);
+            // Relevance score calculation moved to _calculateRelevanceForExtractedMeals or done after list construction
             meals.add(meal);
-          } catch (e) {
-            if (kDebugMode) {
-              print("MealService: Error parsing single meal from JSON map: $jsonResponse. Error: $e. Attempting text extraction.");
-            }
-            List<Meal> extractedFromSingleMap = _extractMealsFromText(jsonResponse.toString(), userIngredients);
-            meals.addAll(extractedFromSingleMap);
+          } else {
+              if (kDebugMode) {
+                  print("MealService: Encountered non-map item in JSON list: $mealJson. Trying to extract from its string representation.");
+              }
+              List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
+              meals.addAll(extractedFromItem); // Add first, calculate relevance later
           }
-      } else {
+        } catch (e) {
           if (kDebugMode) {
-              print("MealService: Decoded JSON is not a list or map: $jsonResponse. Trying to extract from its string representation.");
+            print("MealService: Error processing individual meal from JSON list item: $mealJson. Error: $e. Attempting text extraction for this item.");
           }
-          List<Meal> extractedFromUnknownFormat = _extractMealsFromText(jsonResponse.toString(), userIngredients);
-          meals.addAll(extractedFromUnknownFormat);
+          List<Meal> extractedFromItem = _extractMealsFromText(mealJson.toString(), userIngredients);
+          meals.addAll(extractedFromItem); // Add first, calculate relevance later
+        }
       }
-
+    
       // Calculate relevance for all meals collected so far
       await _calculateRelevanceForExtractedMeals(meals, userIngredients);
 
@@ -203,7 +181,7 @@ class MealService {
 
     // Regex replacements for common JSON issues
     // Ensure keys are double-quoted
-    fixed = fixed.replaceAllMapped(RegExp(r'([{,]\s*)'?([a-zA-Z0-9_]+)'?(\s*):'), (match) {
+    fixed = fixed.replaceAllMapped(RegExp(r'([{,]\s*)'?([a-zA-Z0-9]+)'?(\s*):'), (match) {
       return '${match[1]}"${match[2]}"${match[3]}:';
     });
     // Ensure string values are double-quoted (handles simple cases)

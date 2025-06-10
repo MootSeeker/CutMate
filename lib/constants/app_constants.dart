@@ -28,6 +28,7 @@ class AppConstants {
   static const double maxHeightCm = 220.0;
     // Default values
   static const int defaultGoalDurationDays = 90; // 3 months
+  static const int homeChartDurationDays = 7; // Duration for chart on home screen
   
   // Meal related
   static const List<String> mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
