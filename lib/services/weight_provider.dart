@@ -68,9 +68,41 @@ class WeightProvider extends ChangeNotifier {
     }
     return null;
   }
-    /// Get the last 7 days of entries for the chart
+  
+  /// Get the last 7 days of entries for the chart
   List<WeightEntry> get last7DaysEntries {
     final sevenDaysAgo = DateTime.now().subtract(Duration(days: AppConstants.homeChartDurationDays));
     return _entries.where((entry) => entry.date.isAfter(sevenDaysAgo)).toList();
+  }
+  
+  /// Get weight entries for a specific time period
+  List<WeightEntry> getEntriesForPeriod(int days) {
+    final cutoffDate = DateTime.now().subtract(Duration(days: days));
+    return _entries.where((entry) => entry.date.isAfter(cutoffDate)).toList();
+  }
+  
+  /// Calculate weight change for a specific time period
+  double? getWeightChangeForPeriod(int days) {
+    if (_entries.isEmpty) {
+      return null;
+    }
+    
+    final latestWeight = _entries.first.weightKg;
+    final cutoffDate = DateTime.now().subtract(Duration(days: days));
+    
+    // Find the entry closest to the cutoff date
+    WeightEntry? oldestInRange;
+    for (final entry in _entries) {
+      if (entry.date.isAfter(cutoffDate)) {
+        oldestInRange = entry;
+      } else {
+        break;
+      }
+    }
+    
+    if (oldestInRange != null && oldestInRange != _entries.first) {
+      return latestWeight - oldestInRange.weightKg;
+    }
+    return null;
   }
 }

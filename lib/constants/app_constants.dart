@@ -26,9 +26,12 @@ class AppConstants {
   static const double maxWeightKg = 300.0;
   static const double minHeightCm = 120.0;
   static const double maxHeightCm = 220.0;
-    // Default values
+  // Default values
   static const int defaultGoalDurationDays = 90; // 3 months
   static const int homeChartDurationDays = 7; // Duration for chart on home screen
+  
+  // Chart time periods
+  static const List<int> chartTimePeriods = [7, 30, 60, 90]; // Available time periods for charts in days
   
   // Meal related
   static const List<String> mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
