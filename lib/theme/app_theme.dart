@@ -32,7 +32,7 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryAccent,
         brightness: Brightness.dark,
-        background: darkSurface,
+        surface: darkSurface, 
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       scaffoldBackgroundColor: darkSurface,
