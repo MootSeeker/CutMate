@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/screens/main_screen.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/services/weight_provider.dart';
-import 'package:cutmate/services/meal_provider.dart';
-import 'package:cutmate/services/settings_provider.dart';
+import 'package:cutmate/services/meal_provider.dart'; // We'll consolidate this provider
+import 'package:cutmate/services/settings_provider.dart'; // We'll consolidate this provider
 import 'package:cutmate/theme/app_theme.dart';
 import 'package:cutmate/screens/enhanced_meal_test_screen.dart'; // Added from main_enhanced.dart
 

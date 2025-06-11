@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/meal.dart';
-import 'package:cutmate/models/user.dart';
-import 'package:cutmate/services/meal_provider_enhanced.dart';
+import 'package:cutmate/services/meal_provider.dart';
 import 'package:cutmate/widgets/meal_card_with_feedback.dart';
 
 // Common ingredients that users might have
@@ -79,7 +78,7 @@ class _MealScreenState extends State<MealScreen> {
     
     try {
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
-      final userPreferences = null; // TODO: Get user preferences from a provider
+      const userPreferences = null; // TODO: Get user preferences from a provider
       
       await mealProvider.getMealRecommendations(
         user: userPreferences,

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
-import '../models/meal.dart';
-import '../services/meal_provider_enhanced.dart' as enhanced;
+import '../services/meal_provider.dart';
 import '../widgets/meal_card_with_feedback.dart';
 
 /// Demo screen for testing the enhanced meal recommendation system
@@ -22,10 +21,9 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
   @override
   void initState() {
     super.initState();
-    
-    // Initialize the meal provider
+      // Initialize the meal provider
     Future.microtask(() {
-      final mealProvider = Provider.of<enhanced.MealProvider>(context, listen: false);
+      final mealProvider = Provider.of<MealProvider>(context, listen: false);
       mealProvider.initialize();
     });
   }
@@ -68,9 +66,8 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
     setState(() {
       _isGenerating = true;
     });
-    
-    try {
-      final mealProvider = Provider.of<enhanced.MealProvider>(context, listen: false);
+      try {
+      final mealProvider = Provider.of<MealProvider>(context, listen: false);
       
       await mealProvider.getMealRecommendations(
         user: null,
@@ -230,9 +227,8 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
   }
 
   /// Build the list of meal recommendations
-  Widget _buildMealList() {
-    return Expanded(
-      child: Consumer<enhanced.MealProvider>(
+  Widget _buildMealList() {    return Expanded(
+      child: Consumer<MealProvider>(
         builder: (context, mealProvider, child) {
           if (mealProvider.isLoading) {
             return const Center(
@@ -254,9 +250,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
                 ],
               ),
             );
-          }
-
-          if (mealProvider.recommendations.isEmpty) {
+          }          if (mealProvider.recommendations.isEmpty) {
             return const Center(
               child: Text('No meal recommendations yet'),
             );

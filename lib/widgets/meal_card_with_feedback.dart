@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/meal.dart';
-import '../services/meal_provider_enhanced.dart';
+import '../services/meal_provider.dart';
 
 /// Widget for displaying a meal card with user feedback options
 class MealCardWithFeedback extends StatelessWidget {
@@ -11,8 +11,8 @@ class MealCardWithFeedback extends StatelessWidget {
   const MealCardWithFeedback({
     required this.meal,
     this.onFeedbackGiven,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ class MealCardWithFeedback extends StatelessWidget {
                     ),
                     child: Text(
                       '${(meal.relevanceScore * 100).toInt()}%',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -103,9 +103,9 @@ class MealCardWithFeedback extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
+          const Text(
             'Nutrition',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -122,9 +122,9 @@ class MealCardWithFeedback extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ExpansionTile(
-            title: Text(
+            title: const Text(
               'View Recipe',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -289,7 +289,7 @@ class MealCardWithFeedback extends StatelessWidget {
     // Show a snackbar to confirm feedback was recorded
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Thank you for your feedback!'),
+        content: const Text('Thank you for your feedback!'),
         backgroundColor: liked ? Colors.green : Colors.red,
         duration: const Duration(seconds: 2),
       ),

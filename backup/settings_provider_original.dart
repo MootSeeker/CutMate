@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/app_settings.dart';
 import 'package:cutmate/services/storage_service.dart';
-import 'package:cutmate/services/notification_service.dart';
+import 'package:cutmate/services/notification_service_simple.dart';
 
 /// Provider class for app settings
 class SettingsProvider extends ChangeNotifier {
@@ -11,8 +11,7 @@ class SettingsProvider extends ChangeNotifier {
   
   /// Get current app settings
   AppSettings get settings => _settings;
-  
-  /// Get the current theme mode
+    /// Get the current theme mode
   String get themeMode => _settings.themeMode ?? 'system';
   
   /// The current weight unit (kg or lbs)
@@ -26,8 +25,7 @@ class SettingsProvider extends ChangeNotifier {
   
   /// The default chart period in days
   int get defaultChartPeriod => _settings.defaultChartPeriod;
-  
-  /// Initialize the provider with data from storage
+    /// Initialize the provider with data from storage
   Future<void> initialize() async {
     if (_initialized) return;
     
@@ -50,8 +48,7 @@ class SettingsProvider extends ChangeNotifier {
     _initialized = true;
     notifyListeners();
   }
-  
-  /// Update theme mode setting
+    /// Update theme mode setting
   Future<void> setThemeMode(String value) async {
     if (_settings.themeMode == value) return;
     
@@ -74,8 +71,7 @@ class SettingsProvider extends ChangeNotifier {
     final newSettings = _settings.copyWith(showWeightChangeIndicators: value);
     await _updateSettings(newSettings);
   }
-  
-  /// Update weekly reminders setting
+    /// Update weekly reminders setting
   Future<void> setEnableWeeklyReminders(bool value) async {
     if (_settings.enableWeeklyReminders == value) return;
     
@@ -107,8 +103,7 @@ class SettingsProvider extends ChangeNotifier {
     await StorageService.saveData(AppConstants.appSettingsKey, _settings.toJson());
     notifyListeners();
   }
-  
-  /// Get theme mode based on settings
+    /// Get theme mode based on settings
   ThemeMode getThemeMode() {
     switch(_settings.themeMode) {
       case 'dark':

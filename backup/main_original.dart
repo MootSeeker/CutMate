@@ -3,16 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/screens/main_screen.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/services/weight_provider.dart';
-import 'package:cutmate/services/meal_provider.dart';
-import 'package:cutmate/services/settings_provider.dart';
+import 'package:cutmate/services/meal_provider_enhanced.dart';
+import 'package:cutmate/services/settings_provider.dart'; 
 import 'package:cutmate/theme/app_theme.dart';
-import 'package:cutmate/screens/enhanced_meal_test_screen.dart'; // Added from main_enhanced.dart
 
 void main() {
   runApp(
     MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => WeightProvider()),
+      providers: [        ChangeNotifierProvider(create: (context) => WeightProvider()),
         ChangeNotifierProvider(create: (context) => MealProvider()),
         ChangeNotifierProvider(create: (context) => SettingsProvider()),
       ],
@@ -43,9 +41,7 @@ class _CutMateAppState extends State<CutMateApp> {
       // Initialize settings data
       Provider.of<SettingsProvider>(context, listen: false).initialize();
     });
-  }
-  
-  @override
+  }  @override
   Widget build(BuildContext context) {
     return Consumer<SettingsProvider>(
       builder: (context, settingsProvider, child) {
@@ -55,13 +51,11 @@ class _CutMateAppState extends State<CutMateApp> {
           theme: AppTheme.lightTheme(),
           darkTheme: AppTheme.darkTheme(),
           themeMode: settingsProvider.getThemeMode(), // Use settings for theme mode
-          routes: {
-            '/': (context) => const MainScreen(),
-            '/enhanced-meal-test': (context) => const EnhancedMealTestScreen(), // Added from main_enhanced.dart
-          },
-          initialRoute: '/',
+          home: const MainScreen(),
         );
       },
     );
   }
 }
+
+// HomeScreen class moved to lib/screens/home_screen.dart

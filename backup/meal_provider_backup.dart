@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/meal.dart';
 import '../models/user.dart';
-import '../services/meal_service_simple.dart';
+import '../services/meal_service_consolidated.dart'; // We'll create this consolidated file
 import '../services/ingredient_service.dart';
 
 /// Provider class for meal recommendation data

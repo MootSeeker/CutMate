@@ -12,11 +12,12 @@ class AppConstants {
   static const String progressRoute = '/progress';
   static const String profileRoute = '/profile';
   static const String settingsRoute = '/settings';
-    // Storage keys
+  // Storage keys
   static const String userDataKey = 'user_data';
   static const String weightEntriesKey = 'weight_entries';
   static const String appSettingsKey = 'app_settings';
   static const String mealRecommendationsKey = 'meal_recommendations';
+  static const String mealFeedbackKey = 'meal_feedback';
     // Feature flags
   static const bool enableAiFallback = true; // Use fallback meals when AI service fails
   static const bool useAimlApi = true; // Use AIML API for meal recommendations

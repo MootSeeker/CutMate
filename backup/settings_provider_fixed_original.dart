@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/app_settings.dart';
 import 'package:cutmate/services/storage_service.dart';
-import 'package:cutmate/services/notification_service.dart';
+import 'package:cutmate/services/notification_service_simple.dart';
 
 /// Provider class for app settings
 class SettingsProvider extends ChangeNotifier {
