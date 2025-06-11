@@ -195,115 +195,116 @@ class MealService {
     
     return meals;
   }
-  
-  /// Create a breakfast meal
+    /// Create a breakfast meal
   static Meal _createBreakfastMeal(List<String>? availableIngredients) {
     return Meal(
       id: _uuid.v4(),
       name: 'Healthy Avocado Toast',
       description: 'Creamy avocado on whole-grain toast with poached eggs and microgreens.',
-      instructions: '1. Toast two slices of whole-grain bread\n'
-          '2. Mash one ripe avocado with salt, pepper, and lemon juice\n'
-          '3. Spread avocado on toast\n'
-          '4. Top with poached eggs and microgreens',
+      instructions: [
+        'Toast two slices of whole-grain bread',
+        'Mash one ripe avocado with salt, pepper, and lemon juice',
+        'Spread avocado on toast',
+        'Top with poached eggs and microgreens'
+      ],
       ingredients: [
         'Whole-grain bread', 'Avocado', 'Eggs', 'Microgreens',
         'Salt', 'Pepper', 'Lemon juice'
-      ],      nutrients: {
-        'calories': 350,
-        'protein': 14,
-        'carbs': 30,
-        'fat': 22,
+      ],
+      nutrients: {
+        'calories': 350.0,
+        'protein': 14.0,
+        'carbs': 30.0,
+        'fat': 22.0,
       },
-      prepTimeMinutes: 15,
       imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8',
-      mealType: 'Breakfast',
       relevanceScore: _calculateRelevanceScore(['Whole-grain bread', 'Avocado', 'Eggs'], availableIngredients),
       createdAt: DateTime.now(),
+      source: 'fallback',
     );
   }
-  
-  /// Create a lunch meal
+    /// Create a lunch meal
   static Meal _createLunchMeal(List<String>? availableIngredients) {
     return Meal(
       id: _uuid.v4(),
       name: 'Quinoa Veggie Bowl',
       description: 'Protein-packed quinoa bowl with roasted vegetables and tahini dressing.',
-      instructions: '1. Cook quinoa according to package instructions\n'
-          '2. Roast mixed vegetables (bell peppers, zucchini, cherry tomatoes)\n'
-          '3. Combine quinoa and vegetables in a bowl\n'
-          '4. Drizzle with tahini dressing and sprinkle with pumpkin seeds',
+      instructions: [
+        'Cook quinoa according to package instructions',
+        'Roast mixed vegetables (bell peppers, zucchini, cherry tomatoes)',
+        'Combine quinoa and vegetables in a bowl',
+        'Drizzle with tahini dressing and sprinkle with pumpkin seeds'
+      ],
       ingredients: [
         'Quinoa', 'Bell peppers', 'Zucchini', 'Cherry tomatoes',
         'Tahini', 'Lemon juice', 'Garlic', 'Olive oil', 'Pumpkin seeds'
       ],
-      nutritionInfo: {
-        'calories': 420,
-        'protein': 12,
-        'carbs': 58,
-        'fat': 18,
+      nutrients: {
+        'calories': 420.0,
+        'protein': 12.0,
+        'carbs': 58.0,
+        'fat': 18.0,
       },
-      prepTimeMinutes: 25,
       imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
-      mealType: 'Lunch',
       relevanceScore: _calculateRelevanceScore(['Quinoa', 'Bell peppers', 'Zucchini', 'Tahini'], availableIngredients),
       createdAt: DateTime.now(),
+      source: 'fallback',
     );
   }
-  
-  /// Create a dinner meal
+    /// Create a dinner meal
   static Meal _createDinnerMeal(List<String>? availableIngredients) {
     return Meal(
       id: _uuid.v4(),
       name: 'Grilled Salmon with Asparagus',
       description: 'Omega-3 rich salmon fillet with roasted asparagus and lemon herb sauce.',
-      instructions: '1. Preheat grill to medium-high heat\n'
-          '2. Season salmon with salt, pepper, and olive oil\n'
-          '3. Grill salmon for 4-5 minutes per side\n'
-          '4. Roast asparagus with olive oil, salt, and pepper\n'
-          '5. Mix herbs, lemon juice, and olive oil for sauce\n'
-          '6. Drizzle sauce over salmon and asparagus',
+      instructions: [
+        'Preheat grill to medium-high heat',
+        'Season salmon with salt, pepper, and olive oil',
+        'Grill salmon for 4-5 minutes per side',
+        'Roast asparagus with olive oil, salt, and pepper',
+        'Mix herbs, lemon juice, and olive oil for sauce',
+        'Drizzle sauce over salmon and asparagus'
+      ],
       ingredients: [
         'Salmon fillet', 'Asparagus', 'Lemon', 'Fresh herbs',
         'Olive oil', 'Salt', 'Pepper', 'Garlic'
       ],
-      nutritionInfo: {
-        'calories': 380,
-        'protein': 34,
-        'carbs': 8,
-        'fat': 25,
+      nutrients: {
+        'calories': 380.0,
+        'protein': 34.0,
+        'carbs': 8.0,
+        'fat': 25.0,
       },
-      prepTimeMinutes: 20,
       imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288',
-      mealType: 'Dinner',
       relevanceScore: _calculateRelevanceScore(['Salmon fillet', 'Asparagus', 'Lemon', 'Herbs'], availableIngredients),
       createdAt: DateTime.now(),
+      source: 'fallback',
     );
   }
-  
-  /// Create a snack meal
+    /// Create a snack meal
   static Meal _createSnackMeal(List<String>? availableIngredients) {
     return Meal(
       id: _uuid.v4(),
       name: 'Greek Yogurt Parfait',
       description: 'Creamy Greek yogurt with berries, honey, and granola.',
-      instructions: '1. Layer Greek yogurt in a glass\n'
-          '2. Add a layer of mixed berries\n'
-          '3. Top with granola and a drizzle of honey',
+      instructions: [
+        'Layer Greek yogurt in a glass',
+        'Add a layer of mixed berries',
+        'Top with granola and a drizzle of honey'
+      ],
       ingredients: [
         'Greek yogurt', 'Mixed berries', 'Granola', 'Honey'
       ],
-      nutritionInfo: {
-        'calories': 220,
-        'protein': 14,
-        'carbs': 30,
-        'fat': 6,
+      nutrients: {
+        'calories': 220.0,
+        'protein': 14.0,
+        'carbs': 30.0,
+        'fat': 6.0,
       },
-      prepTimeMinutes: 5,
       imageUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777',
-      mealType: 'Snack',
       relevanceScore: _calculateRelevanceScore(['Greek yogurt', 'Mixed berries', 'Granola'], availableIngredients),
       createdAt: DateTime.now(),
+      source: 'fallback',
     );
   }
   
