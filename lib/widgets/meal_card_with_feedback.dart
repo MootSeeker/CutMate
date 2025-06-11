@@ -274,7 +274,10 @@ class MealCardWithFeedback extends StatelessWidget {
     
     // For negative feedback, show a dialog to collect more information
     if (!liked) {
+      // Check mounted before showing a dialog that depends on the context
+      if (!context.mounted) return;
       String? feedback = await _showFeedbackDialog(context);
+      // No need to check mounted again before this await, as mealProvider is not UI dependent for this call
       await mealProvider.recordMealFeedback(meal.id, liked, feedback: feedback);
     } else {
       // For positive feedback, just record it
@@ -286,7 +289,9 @@ class MealCardWithFeedback extends StatelessWidget {
       onFeedbackGiven!();
     }
     
-    // Show a snackbar to confirm feedback was recorded
+    // Check if the widget is still mounted before showing the SnackBar
+    if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Thank you for your feedback!'),
