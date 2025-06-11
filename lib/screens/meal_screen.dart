@@ -26,7 +26,6 @@ class _MealScreenState extends State<MealScreen> {
   final List<String> _selectedIngredients = [];
   final Map<String, TextEditingController> _controllers = {};
   bool _isGenerating = false;
-
   @override
   void initState() {
     super.initState();
@@ -37,6 +36,8 @@ class _MealScreenState extends State<MealScreen> {
     
     // Initialize the meal provider
     Future.microtask(() {
+      // Check if the widget is still mounted before accessing context
+      if (!mounted) return;
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       mealProvider.initialize();
     });
@@ -67,8 +68,7 @@ class _MealScreenState extends State<MealScreen> {
         _selectedIngredients.add(ingredient);
       }
     });
-  }
-  /// Generate a new meal recommendation
+  }  /// Generate a new meal recommendation
   Future<void> _generateMealRecommendation() async {
     if (_isGenerating) return;
     
@@ -77,6 +77,7 @@ class _MealScreenState extends State<MealScreen> {
     });
     
     try {
+      // Store the provider reference before any async operation
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       const userPreferences = null; // TODO: Get user preferences from a provider
       
@@ -88,10 +89,16 @@ class _MealScreenState extends State<MealScreen> {
         count: 3, // Generate more meals to improve the recommendation quality
       );
       // No need to notifyListeners here as the provider already does it
+      
+      // Check if the widget is still mounted before setting state
+      if (!mounted) return;
     } finally {
-      setState(() {
-        _isGenerating = false;
-      });
+      // Only update state if the widget is still mounted
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      }
     }
   }
 
@@ -259,7 +266,6 @@ class _MealScreenState extends State<MealScreen> {
       ),
     );
   }
-
   /// Build an ingredient chip for selection
   Widget _buildIngredientChip(String ingredient) {
     final isSelected = _selectedIngredients.contains(ingredient);
@@ -267,7 +273,7 @@ class _MealScreenState extends State<MealScreen> {
     return FilterChip(
       selected: isSelected,
       label: Text(ingredient),
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+      selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
       checkmarkColor: Theme.of(context).primaryColor,
       onSelected: (_) => _toggleIngredient(ingredient),
     );

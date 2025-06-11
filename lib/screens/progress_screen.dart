@@ -229,7 +229,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: DropdownButtonHideUnderline(
@@ -365,7 +365,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),          borderData: FlBorderData(
             show: true,
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           gridData: FlGridData(
             show: true,
@@ -373,14 +373,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
             horizontalInterval: 1,
             getDrawingHorizontalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.2),
+                color: Colors.grey.withValues(alpha: 0.2),
                 strokeWidth: 0.8,
                 dashArray: [5, 5],
               );
             },
             getDrawingVerticalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 strokeWidth: 0.8,
               );
             },
@@ -391,7 +391,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           maxY: maxY,
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+              tooltipBgColor: Colors.blueGrey.withValues(alpha: 0.8),
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                 return touchedBarSpots.map((barSpot) {
                   final flSpot = barSpot;
@@ -444,11 +444,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: const Color(0xFF2F80FF).withOpacity(0.2),
+                color: const Color(0xFF2F80FF).withValues(alpha: 0.2),
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF2F80FF).withOpacity(0.3),
-                    const Color(0xFF2F80FF).withOpacity(0.05),
+                    const Color(0xFF2F80FF).withValues(alpha: 0.3),
+                    const Color(0xFF2F80FF).withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

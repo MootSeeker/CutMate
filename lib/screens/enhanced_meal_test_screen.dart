@@ -17,12 +17,13 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
   final List<String> _selectedIngredients = [];
   final TextEditingController _ingredientController = TextEditingController();
   bool _isGenerating = false;
-
   @override
   void initState() {
     super.initState();
       // Initialize the meal provider
     Future.microtask(() {
+      // Check if the widget is still mounted before accessing context
+      if (!mounted) return;
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       mealProvider.initialize();
     });
@@ -58,7 +59,6 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       _selectedIngredients.remove(ingredient);
     });
   }
-
   /// Generate a new meal recommendation
   Future<void> _generateMealRecommendation() async {
     if (_isGenerating) return;
@@ -67,6 +67,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       _isGenerating = true;
     });
       try {
+      // Store the provider reference before any async operation
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       
       await mealProvider.getMealRecommendations(
@@ -75,10 +76,16 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
         preferredIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
         availableIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
       );
+      
+      // Check if the widget is still mounted before continuing
+      if (!mounted) return;
     } finally {
-      setState(() {
-        _isGenerating = false;
-      });
+      // Only update state if the widget is still mounted
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      }
     }
   }
 

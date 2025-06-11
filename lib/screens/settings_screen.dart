@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildSectionHeader('Appearance'),
                     ListTile(
                       title: const Text('Theme'),
-                      subtitle: Text('Control the app appearance'),
+                      subtitle: const Text('Control the app appearance'),
                       trailing: DropdownButton<String>(
                         value: settings.themeMode,
                         onChanged: (value) {

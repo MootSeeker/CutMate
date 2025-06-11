@@ -4,12 +4,11 @@ import '../models/meal.dart';
 import '../models/user.dart';
 import '../constants/app_constants.dart';
 import './storage_service.dart';
-import './ingredient_service.dart';
 
 /// Simplified service for handling meal recommendations with fallback data
 class MealService {
   // UUID generator
-  static final _uuid = Uuid();
+  static const _uuid = Uuid();
   
   /// Load saved meal recommendations from storage
   static Future<List<Meal>> loadMealRecommendations() async {

@@ -79,13 +79,13 @@ class HomeScreen extends StatelessWidget {
             verticalInterval: 1,
             getDrawingHorizontalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.15),
+                color: Colors.grey.withValues(alpha:0.15),
                 strokeWidth: 1,
               );
             },
             getDrawingVerticalLine: (value) {
               return FlLine(
-                color: Colors.grey.withOpacity(0.15),
+                color: Colors.grey.withValues(alpha:0.15),
                 strokeWidth: 1,
               );
             },
@@ -138,14 +138,14 @@ class HomeScreen extends StatelessWidget {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
           ),
           minX: 0,
           maxX: sortedEntries.length - 1,
           minY: minY,
           maxY: maxY,
           lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+            touchTooltipData: LineTouchTooltipData(              tooltipBgColor: Colors.blueGrey.withValues(alpha:0.8),
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                 final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
                 final unit = settingsProvider.weightUnitSuffix;
@@ -189,11 +189,11 @@ class HomeScreen extends StatelessWidget {
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: const Color(0xFF2F80FF).withOpacity(0.15),
+                color: const Color(0xFF2F80FF).withValues(alpha:0.15),
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF2F80FF).withOpacity(0.25),
-                    const Color(0xFF2F80FF).withOpacity(0.05),
+                    const Color(0xFF2F80FF).withValues(alpha:0.25),
+                    const Color(0xFF2F80FF).withValues(alpha:0.05),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

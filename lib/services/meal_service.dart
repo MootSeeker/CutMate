@@ -1,17 +1,15 @@
-import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/meal.dart';
 import '../models/user.dart';
 import '../constants/app_constants.dart';
 import './storage_service.dart';
-import './ingredient_service.dart';
+
 
 /// Service for handling meal recommendations with fallback mechanism and AI capabilities
 class MealService {
   // UUID generator
-  static final _uuid = Uuid();
+  static const _uuid = Uuid();
   
   /// Load saved meal recommendations from storage
   static Future<List<Meal>> loadMealRecommendations() async {
