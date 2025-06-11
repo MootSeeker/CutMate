@@ -71,7 +71,7 @@ class WeightProvider extends ChangeNotifier {
   
   /// Get the last 7 days of entries for the chart
   List<WeightEntry> get last7DaysEntries {
-    final sevenDaysAgo = DateTime.now().subtract(Duration(days: AppConstants.homeChartDurationDays));
+    final sevenDaysAgo = DateTime.now().subtract(const Duration(days: AppConstants.homeChartDurationDays));
     return _entries.where((entry) => entry.date.isAfter(sevenDaysAgo)).toList();
   }
   
