@@ -218,7 +218,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             });
           }
         },
-        style: ButtonStyle(
+        style: const ButtonStyle(
           visualDensity: VisualDensity.compact,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
