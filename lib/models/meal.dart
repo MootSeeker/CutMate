@@ -10,6 +10,7 @@ class Meal {
   final DateTime createdAt;
   final String source; // 'openai', 'mistral', etc.
   final bool isFavorite;
+  final double relevanceScore; // Score based on ingredients match, higher is better
   
   Meal({
     required this.id,
@@ -22,9 +23,9 @@ class Meal {
     required this.createdAt,
     required this.source,
     this.isFavorite = false,
+    this.relevanceScore = 0.0,
   });
-  
-  /// Create a meal from JSON data
+    /// Create a meal from JSON data
   factory Meal.fromJson(Map<String, dynamic> json) {
     return Meal(
       id: json['id'],
@@ -37,6 +38,7 @@ class Meal {
       createdAt: DateTime.parse(json['created_at']),
       source: json['source'],
       isFavorite: json['is_favorite'] ?? false,
+      relevanceScore: (json['relevance_score'] ?? 0.0).toDouble(),
     );
   }
   
@@ -47,16 +49,15 @@ class Meal {
       'name': name,
       'description': description,
       'ingredients': ingredients,
-      'instructions': instructions,
-      'nutrients': nutrients,
+      'instructions': instructions,      'nutrients': nutrients,
       'image_url': imageUrl,
       'created_at': createdAt.toIso8601String(),
       'source': source,
       'is_favorite': isFavorite,
+      'relevance_score': relevanceScore,
     };
   }
-  
-  /// Create a copy of the meal with updated properties
+  /// Create a copy of this Meal with optional new properties
   Meal copyWith({
     String? id,
     String? name,
@@ -68,6 +69,7 @@ class Meal {
     DateTime? createdAt,
     String? source,
     bool? isFavorite,
+    double? relevanceScore,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -80,6 +82,7 @@ class Meal {
       createdAt: createdAt ?? this.createdAt,
       source: source ?? this.source,
       isFavorite: isFavorite ?? this.isFavorite,
+      relevanceScore: relevanceScore ?? this.relevanceScore,
     );
   }
 }

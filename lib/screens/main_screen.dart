@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cutmate/screens/home_screen.dart';
 import 'package:cutmate/screens/progress_screen.dart';
 import 'package:cutmate/screens/meal_screen.dart';
+import 'package:cutmate/screens/enhanced_meal_test_screen.dart';
 
 /// Main screen with bottom navigation bar
 class MainScreen extends StatefulWidget {
@@ -15,12 +16,13 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
-    // Pages to display
+  // Pages to display
   final List<Widget> _pages = [
     const HomeScreen(),
     const MealScreen(),
     const ProgressScreen(),
     const PlaceholderScreen(title: 'Profile'),
+    const EnhancedMealTestScreen(), // Add the enhanced meal test screen
   ];
     void _onItemTapped(int index) {
     setState(() {
@@ -55,10 +57,14 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.show_chart),
             label: 'Progress',
-          ),
-          BottomNavigationBarItem(
+          ),          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
+          ),
+          // Add enhanced meal test tab
+          BottomNavigationBarItem(
+            icon: Icon(Icons.science),
+            label: 'Test New',
           ),
         ],
       ),

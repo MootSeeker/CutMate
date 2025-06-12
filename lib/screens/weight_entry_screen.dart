@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/weight_entry.dart';
 import 'package:cutmate/services/weight_provider.dart';
+import 'package:cutmate/services/settings_provider.dart';
 
 /// Screen for entering weight data
 class WeightEntryScreen extends StatefulWidget {
@@ -38,12 +39,18 @@ class _WeightEntryScreenState extends State<WeightEntryScreen> {
       });
     }
   }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
+      // Get the entered weight and convert to kg if needed
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      final enteredWeight = double.parse(_weightController.text);
+      final weightInKg = settingsProvider.convertToStorageUnit(enteredWeight);
+      
       // Create weight entry
       final entry = WeightEntry(
         date: _selectedDate,
-        weightKg: double.parse(_weightController.text),
+        weightKg: weightInKg,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
         source: 'manual',
       );
@@ -99,35 +106,52 @@ class _WeightEntryScreenState extends State<WeightEntryScreen> {
               const SizedBox(height: 16),
               
               // Weight input
-              const Text(
-                'Weight (kg)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _weightController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter your weight',
-                  suffixText: 'kg',
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your weight';
-                  }
-                  
-                  final weight = double.tryParse(value);
-                  if (weight == null) {
-                    return 'Please enter a valid number';
-                  }
-                  
-                  if (weight < AppConstants.minWeightKg || 
-                      weight > AppConstants.maxWeightKg) {
-                    return 'Weight must be between ${AppConstants.minWeightKg} ' 'and ${AppConstants.maxWeightKg} kg';
-                  }
-                  
-                  return null;
+              Consumer<SettingsProvider>(
+                builder: (context, settingsProvider, _) {
+                  final unit = settingsProvider.weightUnitSuffix;
+                  final minWeight = unit == 'kg' 
+                    ? AppConstants.minWeightKg 
+                    : SettingsProvider.kgToLbs(AppConstants.minWeightKg);
+                  final maxWeight = unit == 'kg' 
+                    ? AppConstants.maxWeightKg 
+                    : SettingsProvider.kgToLbs(AppConstants.maxWeightKg);
+                    
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Weight ($unit)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _weightController,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: 'Enter your weight',
+                          suffixText: unit,
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your weight';
+                          }
+                          
+                          final weight = double.tryParse(value);
+                          if (weight == null) {
+                            return 'Please enter a valid number';
+                          }
+                          
+                          if (weight < minWeight || weight > maxWeight) {
+                            return 'Weight must be between ${minWeight.toStringAsFixed(1)} ' 
+                              'and ${maxWeight.toStringAsFixed(0)} $unit';
+                          }
+                          
+                          return null;
+                        },
+                      ),
+                    ],
+                  );
                 },
               ),
               const SizedBox(height: 16),

@@ -4,6 +4,9 @@ import 'package:cutmate/screens/main_screen.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/services/weight_provider.dart';
 import 'package:cutmate/services/meal_provider.dart';
+import 'package:cutmate/services/settings_provider.dart';
+import 'package:cutmate/theme/app_theme.dart';
+import 'package:cutmate/screens/enhanced_meal_test_screen.dart'; // Added from main_enhanced.dart
 
 void main() {
   runApp(
@@ -11,6 +14,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (context) => WeightProvider()),
         ChangeNotifierProvider(create: (context) => MealProvider()),
+        ChangeNotifierProvider(create: (context) => SettingsProvider()),
       ],
       child: const CutMateApp(),
     ),
@@ -24,7 +28,8 @@ class CutMateApp extends StatefulWidget {
   State<CutMateApp> createState() => _CutMateAppState();
 }
 
-class _CutMateAppState extends State<CutMateApp> {  @override
+class _CutMateAppState extends State<CutMateApp> {
+  @override
   void initState() {
     super.initState();
     // Initialize data when app starts
@@ -34,34 +39,29 @@ class _CutMateAppState extends State<CutMateApp> {  @override
       
       // Initialize meal data
       Provider.of<MealProvider>(context, listen: false).initialize();
+      
+      // Initialize settings data
+      Provider.of<SettingsProvider>(context, listen: false).initialize();
     });
   }
+  
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(useMaterial3: true).copyWith(
-        primaryColor: const Color(0xFF2F80FF),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2F80FF),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF7F7F7),
-      ),
-      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-        primaryColor: const Color(0xFF2F80FF),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2F80FF),
-          brightness: Brightness.dark,
-          background: const Color(0xFF111827),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF111827),
-      ),
-      themeMode: ThemeMode.system, // Respect system theme
-      home: const MainScreen(),
+    return Consumer<SettingsProvider>(
+      builder: (context, settingsProvider, child) {
+        return MaterialApp(
+          title: AppConstants.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme(),
+          darkTheme: AppTheme.darkTheme(),
+          themeMode: settingsProvider.getThemeMode(), // Use settings for theme mode
+          routes: {
+            '/': (context) => const MainScreen(),
+            '/enhanced-meal-test': (context) => const EnhancedMealTestScreen(), // Added from main_enhanced.dart
+          },
+          initialRoute: '/',
+        );
+      },
     );
   }
 }
-
-// HomeScreen class moved to lib/screens/home_screen.dart

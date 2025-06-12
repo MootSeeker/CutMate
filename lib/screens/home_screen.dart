@@ -1,23 +1,224 @@
 // filepath: c:\Entwicklung\Software\CutMate\lib\screens\home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart'; 
+import 'package:intl/intl.dart';
 import 'package:cutmate/screens/weight_entry_screen.dart';
 import 'package:cutmate/screens/main_screen.dart';
+import 'package:cutmate/screens/settings_screen.dart';
 import 'package:cutmate/services/weight_provider.dart';
+import 'package:cutmate/services/settings_provider.dart';
+import 'package:cutmate/models/weight_entry.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+    /// Build weight chart for the last 7 days
+  static Widget _buildWeightChart(BuildContext context, List<WeightEntry> entries) {
+    // If we don't have any entries or just one entry, show a message
+    if (entries.isEmpty) {
+      return Container(
+        height: 150,
+        alignment: Alignment.center,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.show_chart, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('Log your weight to see progress', 
+                 style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    } else if (entries.length < 2) {
+      return Container(
+        height: 150,
+        alignment: Alignment.center,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.show_chart, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('Need more data points to show chart', 
+                 style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    
+    // Sort entries by date (oldest to newest)
+    final sortedEntries = [...entries];
+    sortedEntries.sort((a, b) => a.date.compareTo(b.date));
+      // Determine min and max values for the chart
+    final weights = sortedEntries.map((e) => e.weightKg).toList();
+    final minWeight = weights.reduce((a, b) => a < b ? a : b);
+    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
+    
+    // Calculate the range and ensure a minimum range of 2kg for visual clarity
+    final range = maxWeight - minWeight;
+    double minY, maxY;
+    
+    if (range < 2) {
+      // If range is small, create a reasonable padding
+      final midPoint = (minWeight + maxWeight) / 2;
+      minY = midPoint - 1;
+      maxY = midPoint + 1;
+    } else {
+      // Otherwise use the actual values with padding
+      minY = minWeight - 0.5;
+      maxY = maxWeight + 0.5;
+    }
+    
+    return Container(
+      height: 150,
+      padding: const EdgeInsets.all(8.0),      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            horizontalInterval: 1,
+            verticalInterval: 1,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withValues(alpha:0.15),
+                strokeWidth: 1,
+              );
+            },
+            getDrawingVerticalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withValues(alpha:0.15),
+                strokeWidth: 1,
+              );
+            },
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                getTitlesWidget: (value, meta) {                  final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                  if (settingsProvider.weightUnit == 'kg') {
+                    return Text(
+                      value.toInt().toString(),
+                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                    );
+                  } else {
+                    // Convert to lbs for display
+                    final lbsValue = SettingsProvider.kgToLbs(value);
+                    return Text(
+                      lbsValue.round().toString(),
+                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                    );
+                  }
+                },
+                interval: 1,
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 20,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() >= 0 && value.toInt() < sortedEntries.length) {
+                    // Show day of week abbreviation
+                    final date = sortedEntries[value.toInt()].date;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('E').format(date),
+                        style: const TextStyle(fontSize: 9, color: Colors.grey),
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
+          ),
+          minX: 0,
+          maxX: sortedEntries.length - 1,
+          minY: minY,
+          maxY: maxY,
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(              tooltipBgColor: Colors.blueGrey.withValues(alpha:0.8),
+              getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+                final unit = settingsProvider.weightUnitSuffix;
+                
+                return touchedBarSpots.map((barSpot) {
+                  final flSpot = barSpot;
+                  final date = sortedEntries[flSpot.x.toInt()].date;
+                  final weight = settingsProvider.convertToDisplayUnit(flSpot.y);
+                  
+                  return LineTooltipItem(
+                    '${DateFormat('MMM d').format(date)}\n${weight.toStringAsFixed(1)} $unit',
+                    const TextStyle(color: Colors.white),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: List.generate(
+                sortedEntries.length,
+                (index) => FlSpot(
+                  index.toDouble(),
+                  sortedEntries[index].weightKg,
+                ),
+              ),
+              isCurved: true,
+              color: const Color(0xFF2F80FF), // primary accent color
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: const Color(0xFF2F80FF),
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  );
+                },
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                color: const Color(0xFF2F80FF).withValues(alpha:0.15),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF2F80FF).withValues(alpha:0.25),
+                    const Color(0xFF2F80FF).withValues(alpha:0.05),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CutMate'),
-        actions: [
-          IconButton(
+        actions: [          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // Navigate to settings screen
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -60,18 +261,37 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<WeightProvider>(
+                          children: [                            Consumer<WeightProvider>(
                               builder: (context, weightProvider, child) {
-                                final latestEntry = weightProvider.latestEntry;
-                                return Text(
-                                  latestEntry != null
-                                      ? '\ kg'
-                                      : '-- kg',
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                final latestEntry = weightProvider.latestEntry;                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [                                    Consumer<SettingsProvider>(
+                                      builder: (context, settingsProvider, _) {
+                                        final unit = settingsProvider.weightUnitSuffix;
+                                        final weight = latestEntry != null
+                                          ? settingsProvider.convertToDisplayUnit(latestEntry.weightKg)
+                                          : null;
+                                        
+                                        return Text(
+                                          weight != null
+                                              ? '${weight.toStringAsFixed(1)} $unit'
+                                              : '-- $unit',
+                                          style: const TextStyle(
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (latestEntry != null)
+                                      Text(
+                                        'Updated ${DateFormat('MMM d').format(latestEntry.date)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                  ],
                                 );
                               },
                             ),
@@ -138,8 +358,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 
                 const SizedBox(height: 16),
-                
-                // Progress tracking card
+                  // Progress tracking card
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -153,13 +372,75 @@ class HomeScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        const Center(
-                          child: Text(
-                            'View your weight loss journey',
-                            textAlign: TextAlign.center,
-                          ),
+                        const SizedBox(height: 16),                        // Last 7 days weight chart title with trend
+                        Row(
+                          children: [
+                            const Text(
+                              'Last 7 Days',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Consumer<WeightProvider>(
+                              builder: (context, weightProvider, child) {
+                                final entries = weightProvider.last7DaysEntries;
+                                if (entries.length >= 2) {
+                                  final firstWeight = entries.last.weightKg;
+                                  final latestWeight = entries.first.weightKg;
+                                  final difference = latestWeight - firstWeight;
+                                  
+                                  return Row(
+                                    children: [
+                                      Icon(
+                                        difference < 0 
+                                            ? Icons.trending_down 
+                                            : difference > 0 
+                                                ? Icons.trending_up 
+                                                : Icons.trending_flat,
+                                        color: difference < 0 
+                                            ? const Color(0xFF10B981) // success color
+                                            : difference > 0 
+                                                ? const Color(0xFFF59E0B) // warning color
+                                                : Colors.grey,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),                                      Consumer<SettingsProvider>(
+                                        builder: (context, settingsProvider, _) {
+                                          final convertedDiff = settingsProvider.convertToDisplayUnit(difference.abs());
+                                          final unit = settingsProvider.weightUnitSuffix;
+                                          return Text(
+                                            '${convertedDiff.toStringAsFixed(1)} $unit',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: difference < 0 
+                                                  ? const Color(0xFF10B981) // success color
+                                                  : difference > 0 
+                                                      ? const Color(0xFFF59E0B) // warning color
+                                                      : Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                }
+                                return const SizedBox();
+                              },
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        
+                        // Last 7 days weight chart
+                        Consumer<WeightProvider>(
+                          builder: (context, weightProvider, child) {
+                            final entries = weightProvider.last7DaysEntries;
+                            return _buildWeightChart(context, entries);
+                          },
+                        ),
+                        
                         const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
@@ -172,7 +453,7 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               );
                             },
-                            child: const Text('View Progress'),
+                            child: const Text('View Full Progress'),
                           ),
                         ),
                       ],

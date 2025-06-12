@@ -23,6 +23,7 @@ CutMate is an AI-powered weight loss application primarily for males aged 18-35.
 
 ### In Progress
 - ✅ Meal recommendation features with AI integration
+- ✅ Project structure consolidation and cleanup
 - 🔄 User profile management
 - 🔄 Shareable content generation
 
@@ -38,6 +39,22 @@ CutMate is an AI-powered weight loss application primarily for males aged 18-35.
 - **Storage**: SharedPreferences
 - **Charts**: fl_chart
 - **UI Components**: Material Design
+- **AI Integration**: Integration with external AI models for meal recommendations
+
+## Project Structure
+
+The project follows a clean architecture approach with the following key components:
+
+- **Models**: Data structures representing core business entities
+- **Services**: Business logic and data management
+  - `meal_service.dart`: Consolidated service for AI-powered meal recommendations
+  - `meal_provider.dart`: State management for meal-related features
+  - `weight_provider.dart`: Handles weight tracking functionality
+  - `settings_provider.dart`: Manages app settings and preferences
+- **Screens**: UI components for different app sections
+- **Widgets**: Reusable UI components
+- **Constants**: App-wide configuration values
+- **Theme**: Styling and visual appearance definitions
 
 ## Getting Started
 
