@@ -16,6 +16,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
   String _selectedMealType = AppConstants.mealTypes.first;
   final List<String> _selectedIngredients = [];
   final TextEditingController _ingredientController = TextEditingController();
+  final TextEditingController _caloriesController = TextEditingController(text: '600'); // Default to 600 calories
   bool _isGenerating = false;
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
   @override
   void dispose() {
     _ingredientController.dispose();
+    _caloriesController.dispose(); // Dispose the new controller
     super.dispose();
   }
 
@@ -70,11 +72,22 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       // Store the provider reference before any async operation
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       
+      // Parse target calories from the input field
+      double? targetCalories;
+      if (_caloriesController.text.isNotEmpty) {
+        try {
+          targetCalories = double.parse(_caloriesController.text);
+        } catch (e) {
+          // Invalid number format, ignore and use default
+        }
+      }
+      
       await mealProvider.getMealRecommendations(
         user: null,
         mealType: _selectedMealType,
         preferredIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
         availableIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
+        targetCalories: targetCalories, // Pass the target calories
       );
       
       // Check if the widget is still mounted before continuing
@@ -99,15 +112,46 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildMealTypeSelector(),
-          _buildIngredientInput(),
-          _buildSelectedIngredients(),
+          _buildIngredientSection(),
+          _buildCalorieInput(), // New method for calories input
           _buildGenerateButton(),
-          _buildMealList(),
+          _buildRecommendations(),
         ],
       ),
     );
   }
 
+  /// Build the calorie input field
+  Widget _buildCalorieInput() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Target Calories:',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _caloriesController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter target calories (e.g., 600)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
   /// Build the meal type selector
   Widget _buildMealTypeSelector() {
     return Padding(
@@ -144,9 +188,9 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       ),
     );
   }
-
-  /// Build the ingredient input field
-  Widget _buildIngredientInput() {
+  
+  /// Build the ingredient selection section
+  Widget _buildIngredientSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -179,18 +223,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  /// Build the list of selected ingredients
-  Widget _buildSelectedIngredients() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 16),
           const Text(
             'Selected Ingredients',
             style: TextStyle(
@@ -216,7 +249,7 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       ),
     );
   }
-
+  
   /// Build the generate button
   Widget _buildGenerateButton() {
     return Padding(
@@ -232,9 +265,10 @@ class _EnhancedMealTestScreenState extends State<EnhancedMealTestScreen> {
       ),
     );
   }
-
-  /// Build the list of meal recommendations
-  Widget _buildMealList() {    return Expanded(
+  
+  /// Build the recommendations section
+  Widget _buildRecommendations() {
+    return Expanded(
       child: Consumer<MealProvider>(
         builder: (context, mealProvider, child) {
           if (mealProvider.isLoading) {

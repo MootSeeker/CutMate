@@ -24,6 +24,7 @@ class MealScreen extends StatefulWidget {
 class _MealScreenState extends State<MealScreen> {
   String _selectedMealType = AppConstants.mealTypes.first;
   final List<String> _selectedIngredients = [];
+  final TextEditingController _caloriesController = TextEditingController(text: '600'); // Default to 600 calories
   final Map<String, TextEditingController> _controllers = {};
   bool _isGenerating = false;
   @override
@@ -49,6 +50,7 @@ class _MealScreenState extends State<MealScreen> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _caloriesController.dispose(); // Dispose calorie controller
     super.dispose();
   }
 
@@ -68,7 +70,9 @@ class _MealScreenState extends State<MealScreen> {
         _selectedIngredients.add(ingredient);
       }
     });
-  }  /// Generate a new meal recommendation
+  }  
+
+  /// Generate a new meal recommendation
   Future<void> _generateMealRecommendation() async {
     if (_isGenerating) return;
     
@@ -81,12 +85,23 @@ class _MealScreenState extends State<MealScreen> {
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       const userPreferences = null; // TODO: Get user preferences from a provider
       
+      // Parse target calories from the input field
+      double? targetCalories;
+      if (_caloriesController.text.isNotEmpty) {
+        try {
+          targetCalories = double.parse(_caloriesController.text);
+        } catch (e) {
+          // Invalid number format, use default (null will use default in provider)
+        }
+      }
+      
       await mealProvider.getMealRecommendations(
         user: userPreferences,
         mealType: _selectedMealType,
         preferredIngredients: _selectedIngredients,
         availableIngredients: _selectedIngredients.isNotEmpty ? _selectedIngredients : null,
         count: 3, // Generate more meals to improve the recommendation quality
+        targetCalories: targetCalories, // Pass target calories to the provider
       );
       // No need to notifyListeners here as the provider already does it
       
@@ -145,7 +160,7 @@ class _MealScreenState extends State<MealScreen> {
             ),
           ),
           
-          // Ingredients selector (new)
+          // Ingredients selector
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
@@ -180,6 +195,66 @@ class _MealScreenState extends State<MealScreen> {
                       .toList(),
                 ),
               ],
+            ),
+          ),
+          
+          // Calories input field (new)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Target Calories:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _caloriesController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter target calories (e.g., 600)',
+                    border: OutlineInputBorder(),
+                    suffixText: 'kcal',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          
+          // Generate Meal Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _isGenerating ? null : _generateMealRecommendation,
+                icon: _isGenerating 
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        strokeWidth: 2.0,
+                      ),
+                    )
+                  : const Icon(Icons.restaurant_menu),
+                label: Text(
+                  _isGenerating ? 'Generating...' : 'Generate Meal',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
             ),
           ),
           
@@ -231,12 +306,6 @@ class _MealScreenState extends State<MealScreen> {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _isGenerating ? null : _generateMealRecommendation,
-        child: _isGenerating
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Icon(Icons.refresh),
       ),
     );
   }
@@ -414,11 +483,10 @@ class _MealScreenState extends State<MealScreen> {
           ),
           
           const SizedBox(height: 8),
-          
-          // Source attribution
+            // Source attribution
           Center(
             child: Text(
-              'Generated by ${meal.source.toUpperCase()}',
+              'Generated by ${meal.source.toString().toUpperCase()}',
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -457,7 +525,6 @@ class _MealScreenState extends State<MealScreen> {
       ],
     );
   }
-
   /// Build the nutrient information section
   Widget _buildNutrientInfo(Meal meal) {
     final nutrients = meal.nutrients;

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/meal.dart';
 import '../models/user.dart';
-import '../services/meal_service_simple.dart';
+import '../services/meal_service.dart';
 import '../services/ingredient_service.dart';
 
 /// Provider class for meal recommendation data
@@ -10,6 +10,7 @@ class MealProvider extends ChangeNotifier {
   List<Meal> _recommendations = [];
   bool _isLoading = false;
   String _errorMessage = '';
+  final MealService _mealService = MealService();
   
   /// All meal recommendations
   List<Meal> get recommendations => _recommendations;
@@ -83,46 +84,70 @@ class MealProvider extends ChangeNotifier {
   
   /// Initialize the provider with data from storage
   Future<void> initialize() async {
-    _recommendations = await MealService.loadMealRecommendations();
-    notifyListeners();
+    try {
+      // For now, a placeholder to initialize. In the future, this could load saved
+      // meals from local storage or a backend service.
+      _recommendations = [];
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error initializing meal recommendations: $e';
+      notifyListeners();
+    }
   }
   
-  /// Get new meal recommendations
+  /// Get new meal recommendations using the algorithmic OpenFoodFacts meal creation
   Future<void> getMealRecommendations({
-    required User? user,
+    User? user,
     int count = 1,
     List<String>? preferredIngredients,
     List<String>? availableIngredients,
     List<String>? excludedIngredients,
     Map<String, dynamic>? nutritionGoals,
     String? mealType,
+    double? targetCalories,
   }) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
     
     try {
-      final meals = await MealService.getMealRecommendations(
-        user: user,
-        count: count,
-        preferredIngredients: preferredIngredients,
-        availableIngredients: availableIngredients,
-        excludedIngredients: excludedIngredients,
-        nutritionGoals: nutritionGoals,
-        mealType: mealType,
-      );
-      
-      if (meals.isNotEmpty) {
-        _recommendations = [...meals, ..._recommendations];
-        _isLoading = false;
-        notifyListeners();
+      // Use availableIngredients as the basis for algorithmic meal creation
+      if (availableIngredients != null && availableIngredients.isNotEmpty) {
+        // Use the new OpenFoodFacts-based algorithmic meal generation
+        final meals = await _mealService.getMealRecommendations(
+          availableIngredients: availableIngredients,
+          count: count,
+          targetCalories: targetCalories ?? 600, // Default to 600 calories if not specified
+        );
+        
+        if (meals.isNotEmpty) {
+          // Add relevance score to each meal based on ingredient matching if preferredIngredients is provided
+          if (preferredIngredients != null && preferredIngredients.isNotEmpty) {
+            final updatedMeals = meals.map((meal) {
+              final score = IngredientService.calculateIngredientMatchScore(
+                meal.ingredients,
+                preferredIngredients,
+              );
+              return meal.copyWith(relevanceScore: score);
+            }).toList();
+            
+            _recommendations = [...updatedMeals, ..._recommendations];
+          } else {
+            _recommendations = [...meals, ..._recommendations];
+          }
+          
+          _isLoading = false;
+          notifyListeners();
+          return;
+        } else {
+          _errorMessage = 'No meals could be generated with the provided ingredients. Try a different selection.';
+        }
       } else {
-        _errorMessage = 'No meal recommendations could be generated. Please try again.';
-        _isLoading = false;
-        notifyListeners();
+        _errorMessage = 'Please select at least one ingredient for meal recommendations.';
       }
     } catch (e) {
       _errorMessage = 'Error generating meal recommendations: $e';
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
@@ -137,8 +162,8 @@ class MealProvider extends ChangeNotifier {
       );
       _recommendations[index] = updatedMeal;
       
-      // Update in storage as well
-      await MealService.toggleFavorite(updatedMeal);
+      // Here we would update in storage as well when that's implemented
+      // await MealService.toggleFavorite(updatedMeal);
       
       notifyListeners();
     }
@@ -146,7 +171,8 @@ class MealProvider extends ChangeNotifier {
   
   /// Record user feedback for a meal
   Future<void> recordMealFeedback(String mealId, bool liked, {String? feedback}) async {
-    await MealService.recordMealFeedback(mealId, liked, feedback);
+    // Here we would persist feedback when that's implemented
+    // await MealService.recordMealFeedback(mealId, liked, feedback);
     
     // Update local state to reflect the feedback
     final index = _recommendations.indexWhere((meal) => meal.id == mealId);
