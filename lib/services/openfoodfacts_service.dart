@@ -10,9 +10,11 @@ class OpenFoodFactsService {
     _logger.info('Searching for products with query: $query, pageSize: $pageSize');
     try {
       final parameter = SearchTerms(terms: [query]);
+      final pageSize = PageSize(size: pageSize);
+      
       final configuration = ProductSearchQueryConfiguration(
-        parametersList: <Parameter>[parameter, PageSize(size: pageSize)],
-        language: OpenFoodFactsLanguage.ENGLISH,
+        parametersList: [parameter, pageSize],
+        language: const OpenFoodFactsLanguage.ENGLISH,
         fields: [ProductField.ALL],
         version: ProductQueryVersion.v3,
       );
@@ -29,13 +31,12 @@ class OpenFoodFactsService {
     }
     return [];
   }
-
   /// Get detailed product info by barcode
   Future<dynamic> getProductByBarcode(String barcode) async {
     _logger.info('Getting product details for barcode: $barcode');
     try {
       final configuration = ProductQueryConfiguration(
-        barcode,
+        barcode: barcode,
         language: OpenFoodFactsLanguage.ENGLISH,
         fields: [ProductField.ALL],
         version: ProductQueryVersion.v3,
