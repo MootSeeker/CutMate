@@ -146,13 +146,14 @@ class MealCardWithFeedback extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildNutrientInfo(String label, String value) {
+    Widget _buildNutrientInfo(String label, String value) {
     return Chip(
       label: Text(
         '$label: $value',
         style: const TextStyle(
           fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
         ),
       ),
       backgroundColor: Colors.grey[100],

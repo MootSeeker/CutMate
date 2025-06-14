@@ -42,14 +42,13 @@ class _ImageCarouselState extends State<ImageCarousel> {
     _pageController.dispose();
     super.dispose();
   }
-  
-  @override
+    @override
   Widget build(BuildContext context) {
     // Combine main image with additional images
     final allImages = [widget.mainImageUrl, ...widget.additionalImages];
     
-    // If there are no valid images, show a placeholder
-    if (allImages.isEmpty || (allImages.length == 1 && allImages.first.isEmpty)) {
+    // If there are no valid images at all, show a placeholder
+    if (allImages.isEmpty) {
       return _buildPlaceholder();
     }
     
@@ -58,7 +57,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
     
     // If after filtering we have no valid images, show placeholder
     if (validImages.isEmpty) {
-      return _buildPlaceholder();
+      // Use the default placeholder image instead of showing an error
+      validImages.add('assets/images/placeholder.png');
     }
     
     return Column(
@@ -98,17 +98,26 @@ class _ImageCarouselState extends State<ImageCarousel> {
       ],
     );
   }
-  
-  Widget _buildImageItem(String imageUrl) {
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      placeholder: (context, url) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-      errorWidget: (context, url, error) => _buildErrorWidget(),
-    );
+    Widget _buildImageItem(String imageUrl) {
+    // Check if it's a local asset image or a network image
+    if (imageUrl.startsWith('assets/')) {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+      );
+    } else {
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        errorWidget: (context, url, error) => _buildErrorWidget(),
+      );
+    }
   }
   
   Widget _buildPageIndicator(bool isActive) {
@@ -124,8 +133,7 @@ class _ImageCarouselState extends State<ImageCarousel> {
       ),
     );
   }
-  
-  Widget _buildPlaceholder() {
+    Widget _buildPlaceholder() {
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
@@ -135,25 +143,46 @@ class _ImageCarouselState extends State<ImageCarousel> {
           topRight: Radius.circular(widget.borderRadius),
         ),
       ),
-      child: const Center(
-        child: Icon(
-          Icons.restaurant,
-          size: 48,
-          color: Colors.grey,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.restaurant,
+            size: 48,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Meal Image",
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
-  
-  Widget _buildErrorWidget() {
+    Widget _buildErrorWidget() {
     return Container(
       color: Colors.grey[200],
-      child: const Center(
-        child: Icon(
-          Icons.error_outline,
-          size: 48,
-          color: Colors.grey,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.restaurant,
+            size: 48,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Meal Image",
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

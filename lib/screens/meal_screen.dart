@@ -4,6 +4,7 @@ import 'package:cutmate/constants/app_constants.dart';
 import 'package:cutmate/models/meal.dart';
 import 'package:cutmate/services/meal_provider.dart';
 import 'package:cutmate/widgets/meal_card_with_feedback.dart';
+import 'package:cutmate/widgets/smooth_circular_progress.dart';
 
 // Common ingredients that users might have
 final List<String> commonIngredients = [
@@ -41,8 +42,7 @@ class _MealScreenState extends State<MealScreen> {
       if (!mounted) return;
       final mealProvider = Provider.of<MealProvider>(context, listen: false);
       mealProvider.initialize();
-    });
-  }
+    });  }
 
   @override
   void dispose() {
@@ -52,6 +52,30 @@ class _MealScreenState extends State<MealScreen> {
     }
     _caloriesController.dispose(); // Dispose calorie controller
     super.dispose();
+  }
+    /// Get descriptive text for the current generation progress stage
+  String _getProgressStageText(double progress) {
+    if (progress <= 10) {
+      return 'Starting meal generation...';
+    } else if (progress <= 25) {
+      return 'Checking meal services...';
+    } else if (progress <= 40) {
+      return 'Analyzing ingredients...';
+    } else if (progress <= 50) {
+      return 'Processing ingredient data...';
+    } else if (progress <= 65) {
+      return 'Searching ingredient database...';
+    } else if (progress <= 70) {
+      return 'Creating recipe...';
+    } else if (progress <= 75) {
+      return 'Retrieving meal information...';
+    } else if (progress <= 85) {
+      return 'Processing nutritional data...';
+    } else if (progress <= 95) {
+      return 'Finalizing recipe details...';
+    } else {
+      return 'Completing your meal recommendation...';
+    }
   }
 
   /// Update the selected meal type
@@ -224,49 +248,124 @@ class _MealScreenState extends State<MealScreen> {
               ],
             ),
           ),
-          
-          // Generate Meal Button
+            // Generate Meal Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _isGenerating ? null : _generateMealRecommendation,
-                icon: _isGenerating 
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        strokeWidth: 2.0,
+              child: Consumer<MealProvider>(
+                builder: (context, mealProvider, child) {
+                  return ElevatedButton.icon(                    onPressed: _isGenerating ? null : _generateMealRecommendation,
+                    icon: _isGenerating 
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SmoothCircularProgress(
+                                value: mealProvider.generationProgress > 0 
+                                    ? mealProvider.generationProgress / 100 
+                                    : null,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                strokeWidth: 2.0,
+                                pulsing: true,
+                              ),
+                              if (mealProvider.generationProgress > 0)
+                                AnimatedPercentageText(
+                                  percentage: mealProvider.generationProgress,
+                                  includeSymbol: false,
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Theme.of(context).colorScheme.onPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        )
+                      : const Icon(Icons.restaurant_menu),
+                    label: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        _isGenerating 
+                            ? (mealProvider.generationProgress > 0 
+                                ? 'Generating... ${mealProvider.generationProgress.toInt()}%' 
+                                : 'Generating...') 
+                            : 'Generate Meal',
+                        key: ValueKey<String>(_isGenerating ? 'generating' : 'generate'),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                    )
-                  : const Icon(Icons.restaurant_menu),
-                label: Text(
-                  _isGenerating ? 'Generating...' : 'Generate Meal',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  );
+                }
               ),
             ),
           ),
           
           const SizedBox(height: 16),
-          
-          // Meal recommendations
+            // Meal recommendations
           Expanded(
             child: Consumer<MealProvider>(
-              builder: (context, mealProvider, child) {
-                if (mealProvider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
+              builder: (context, mealProvider, child) {                if (mealProvider.isLoading) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SmoothCircularProgress(
+                              value: mealProvider.generationProgress > 0 
+                                  ? mealProvider.generationProgress / 100 
+                                  : null,
+                              strokeWidth: 4.0,
+                              color: Theme.of(context).colorScheme.primary,
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                            ),
+                            if (mealProvider.generationProgress > 0)
+                              AnimatedPercentageText(
+                                percentage: mealProvider.generationProgress,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Generating your meal...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (mealProvider.generationProgress > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 500),
+                              child: Text(
+                                _getProgressStageText(mealProvider.generationProgress),
+                                key: ValueKey<String>(_getProgressStageText(mealProvider.generationProgress)),
+                                style: TextStyle(
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   );
                 }
                 
