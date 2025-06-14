@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import '../models/meal.dart';
 import 'openfoodfacts_service.dart';
@@ -10,7 +9,6 @@ class MealService {
 
   MealService({OpenFoodFactsService? openFoodFactsService})
       : _openFoodFactsService = openFoodFactsService ?? OpenFoodFactsService();
-
   Future<Meal?> createAlgorithmicMeal({
     required List<String> ingredientNames,
     double? targetCalories,
@@ -21,24 +19,128 @@ class MealService {
       return null; // Or return a random fallback meal
     }
 
+    _logger.info('Starting algorithmic meal creation with ingredients: ${ingredientNames.join(", ")}');
+    
     List<dynamic> foundProducts = [];
     List<String> missingIngredients = [];
-
+      // Log that we're starting the ingredient search process
+    _logger.info('Searching for products for ${ingredientNames.length} ingredients: ${ingredientNames.join(", ")}');
+    
+    // First attempt: Try to search for specific products by ingredient name
+    // We'll search with pageSize=3 to find more relevant products
     for (String ingredientName in ingredientNames) {
-      final products = await _openFoodFactsService.searchProducts(ingredientName, pageSize: 1);
-      if (products.isNotEmpty && products.first['product_name'] != null && products.first['product_name'].isNotEmpty) {
-        // For simplicity, we take the first product found for each ingredient.
-        // More sophisticated logic could be added here (e.g., user preference, nutritional matching).
-        foundProducts.add(products.first);
-        _logger.info('Found product: ${products.first['product_name']} for ingredient: $ingredientName');
-      } else {
-        _logger.warning('No product found for ingredient: $ingredientName');
+      bool ingredientHandled = false;
+      
+      try {
+        _logger.info('Searching OpenFoodFacts for ingredient: "$ingredientName"');
+        
+        // First try exact ingredient name
+        final products = await _openFoodFactsService.searchProducts(ingredientName, pageSize: 5);
+        
+        if (products.isNotEmpty && products.first['product_name'] != null && products.first['product_name'].isNotEmpty) {
+          // For simplicity, we take the first product found for each ingredient.
+          _logger.info('✓ Found product for "$ingredientName": ${products.first['product_name']}');
+          foundProducts.add(products.first);
+          ingredientHandled = true;
+        } else {
+          _logger.warning('✗ No products found for ingredient: "$ingredientName". Will try alternative searches.');
+        }
+        
+        // If exact name didn't work, try variations
+        if (!ingredientHandled) {
+          final variations = [
+            'organic $ingredientName',
+            '$ingredientName food',
+            '$ingredientName product',
+            '${ingredientName}s',
+          ];
+          
+          for (final variation in variations) {
+            if (ingredientHandled) break;
+            
+            _logger.info('Trying variation: "$variation"');
+            final variationProducts = await _openFoodFactsService.searchProducts(variation, pageSize: 3);
+            
+            if (variationProducts.isNotEmpty && variationProducts.first['product_name'] != null) {
+              _logger.info('✓ Found product using variation "$variation": ${variationProducts.first['product_name']}');
+              foundProducts.add(variationProducts.first);
+              ingredientHandled = true;
+              break;
+            }
+          }
+        }
+        
+        // If still not found, try generic food search
+        if (!ingredientHandled) {
+          // Try food databases as fallback for common ingredients
+          final foodDbMap = {
+            'beef': {'calories': 250, 'protein': 26, 'carbs': 0, 'fat': 17},
+            'chicken': {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6},
+            'broccoli': {'calories': 34, 'protein': 2.8, 'carbs': 7, 'fat': 0.4},
+            'almonds': {'calories': 579, 'protein': 21, 'carbs': 22, 'fat': 50},
+            'rice': {'calories': 130, 'protein': 2.7, 'carbs': 28, 'fat': 0.3},
+            'pasta': {'calories': 158, 'protein': 5.8, 'carbs': 31, 'fat': 0.9},
+          };
+          
+          if (foodDbMap.containsKey(ingredientName.toLowerCase())) {
+            // Create a synthetic product from our food database
+            final nutrientInfo = foodDbMap[ingredientName.toLowerCase()]!;
+            _logger.info('✓ Using built-in food data for "$ingredientName"');
+            
+            final syntheticProduct = {
+              'product_name': 'Generic $ingredientName',
+              'generic_name': 'Basic $ingredientName information',
+              'code': 'synthetic-${ingredientName.toLowerCase().replaceAll(' ', '-')}',
+              'ingredients_text': ingredientName,
+              'categories_tags': ['en:$ingredientName', 'en:foods'],
+              'image_front_url': '',
+              'additional_images': <String>[],
+              'nutriments': {
+                'energy-kcal_100g': nutrientInfo['calories'],
+                'proteins_100g': nutrientInfo['protein'],
+                'carbohydrates_100g': nutrientInfo['carbs'],
+                'fat_100g': nutrientInfo['fat'],
+              }
+            };
+            
+            foundProducts.add(syntheticProduct);
+            ingredientHandled = true;
+          }
+        }
+        
+        // If ingredient still wasn't handled with any method, add to missing ingredients
+        if (!ingredientHandled) {
+          _logger.warning('✗ Failed to find any products for "$ingredientName" after all attempts');
+          missingIngredients.add(ingredientName);
+        }
+        
+      } catch (e) {
+        _logger.severe('Error searching for ingredient "$ingredientName": $e');
         missingIngredients.add(ingredientName);
       }
     }
-
-    if (foundProducts.isEmpty) {
-      _logger.warning('No products found for any of the provided ingredients. Returning fallback meal.');
+    
+    // Log summary of search results
+    _logger.info('Ingredient search summary: Found ${foundProducts.length} products, missing ${missingIngredients.length} ingredients');
+    if (foundProducts.isNotEmpty) {
+      _logger.info('Found products: ${foundProducts.map((p) => p['product_name']).join(', ')}');
+    }
+    if (missingIngredients.isNotEmpty) {
+      _logger.info('Missing ingredients: ${missingIngredients.join(', ')}');
+    }    if (foundProducts.isEmpty) {
+      _logger.warning('No products found for any of the provided ingredients. Trying synthetic meal.');
+      
+      // First attempt: create a synthetic meal if we have ingredient information
+      if (ingredientNames.isNotEmpty) {
+        _logger.info('Creating synthetic meal from ingredient names without OpenFoodFacts data');
+        return _createSyntheticMeal(
+          ingredientNames: ingredientNames,
+          targetCalories: targetCalories,
+          reason: 'Created from basic nutritional data. No matching products found in food database.'
+        );
+      }
+      
+      // If synthetic meal creation failed (which shouldn't happen), use fallback
       return _getFallbackMeal('No products found for your ingredients.');
     }
 
@@ -351,6 +453,210 @@ class MealService {
     
     _logger.info('Legacy searchMeals mapped ${meals.length} products to meals for query "$query".');
     return meals;
+  }
+
+  /// Create a synthetic meal from ingredient names when no real products are found
+  Meal _createSyntheticMeal({
+    required List<String> ingredientNames,
+    double? targetCalories,
+    String? reason
+  }) {
+    _logger.info('Creating synthetic meal from ingredients: ${ingredientNames.join(", ")}');
+    
+    // Basic nutrition data for common ingredients (per 100g)
+    final nutritionMap = {
+      'beef': {'calories': 250, 'protein': 26, 'carbs': 0, 'fat': 17},
+      'chicken': {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6},
+      'broccoli': {'calories': 34, 'protein': 2.8, 'carbs': 7, 'fat': 0.4},
+      'almonds': {'calories': 576, 'protein': 21, 'carbs': 22, 'fat': 49},
+      'rice': {'calories': 130, 'protein': 2.7, 'carbs': 28, 'fat': 0.3},
+      'pasta': {'calories': 158, 'protein': 5.8, 'carbs': 31, 'fat': 0.9},
+      'eggs': {'calories': 143, 'protein': 13, 'carbs': 1.1, 'fat': 9.5},
+      'spinach': {'calories': 23, 'protein': 2.9, 'carbs': 3.6, 'fat': 0.4},
+      'tomatoes': {'calories': 18, 'protein': 0.9, 'carbs': 3.9, 'fat': 0.2},
+      'potatoes': {'calories': 77, 'protein': 2.0, 'carbs': 17, 'fat': 0.1},
+      'onions': {'calories': 40, 'protein': 1.1, 'carbs': 9.3, 'fat': 0.1},
+      'garlic': {'calories': 149, 'protein': 6.4, 'carbs': 33, 'fat': 0.5},
+      'olive oil': {'calories': 884, 'protein': 0, 'carbs': 0, 'fat': 100},
+      'cheese': {'calories': 350, 'protein': 25, 'carbs': 1.3, 'fat': 28},
+      'greek yogurt': {'calories': 59, 'protein': 10, 'carbs': 3.6, 'fat': 0.4},
+      'beans': {'calories': 347, 'protein': 21, 'carbs': 63, 'fat': 1.2},
+      'lentils': {'calories': 116, 'protein': 9, 'carbs': 20, 'fat': 0.4},
+      'quinoa': {'calories': 120, 'protein': 4.4, 'carbs': 21, 'fat': 1.9},
+      'avocado': {'calories': 160, 'protein': 2, 'carbs': 8.5, 'fat': 15},
+      'fish': {'calories': 206, 'protein': 22, 'carbs': 0, 'fat': 12},
+    };
+    
+    // Calculate basic nutrition totals
+    double totalCalories = 0;
+    double totalProtein = 0;
+    double totalCarbs = 0;
+    double totalFat = 0;
+      // Use a standard portion of each ingredient (80g)
+    const portionSize = 80.0; // grams
+    const portionFactor = portionSize / 100.0; // nutritional data is per 100g
+    
+    // Calculate nutrition from ingredients
+    for (String ingredient in ingredientNames) {
+      final normalizedIngredient = ingredient.toLowerCase();
+      if (nutritionMap.containsKey(normalizedIngredient)) {
+        final nutrition = nutritionMap[normalizedIngredient]!;
+        totalCalories += (nutrition['calories'] as double) * portionFactor;
+        totalProtein += (nutrition['protein'] as double) * portionFactor;
+        totalCarbs += (nutrition['carbs'] as double) * portionFactor;
+        totalFat += (nutrition['fat'] as double) * portionFactor;
+        _logger.info('Added synthetic data for $ingredient: ${nutrition['calories']} kcal/100g');
+      } else {
+        // For unknown ingredients, use a standard estimate
+        totalCalories += 100 * portionFactor; // Assume 100 kcal per 100g
+        totalProtein += 5 * portionFactor;   // Assume 5g protein per 100g
+        totalCarbs += 10 * portionFactor;    // Assume 10g carbs per 100g
+        totalFat += 3 * portionFactor;       // Assume 3g fat per 100g
+        _logger.info('Used default nutritional estimate for unknown ingredient: $ingredient');
+      }
+    }
+    
+    double scalingFactor = 1.0;
+    if (targetCalories != null && targetCalories > 0 && totalCalories > 0) {
+      scalingFactor = targetCalories / totalCalories;
+      totalCalories = totalCalories * scalingFactor;
+      totalProtein = totalProtein * scalingFactor;
+      totalCarbs = totalCarbs * scalingFactor;
+      totalFat = totalFat * scalingFactor;
+    }
+    
+    // Create meal name
+    String mealName;
+    if (ingredientNames.length <= 3) {      mealName = "${ingredientNames.join(", ")} ${_getMealType(ingredientNames)}";
+    } else {
+      mealName = "${ingredientNames[0]} and ${ingredientNames[1]} ${_getMealType(ingredientNames)}";
+    }
+    
+    // Generate simple instructions based on ingredients
+    List<String> instructions = _generateInstructions(ingredientNames);
+    
+    // Create nutrient map
+    Map<String, double> nutrientsMap = {
+      'calories': totalCalories,
+      'protein': totalProtein,
+      'carbs': totalCarbs,
+      'fat': totalFat
+    };
+    
+    final notes = reason ?? 'This meal was created from basic ingredient data. Nutrition values are estimates.';
+    
+    return Meal(
+      id: 'synthetic-${DateTime.now().millisecondsSinceEpoch}',
+      name: mealName,
+      description: 'A meal featuring ${ingredientNames.join(", ")}.',
+      nutrients: nutrientsMap,
+      ingredients: ingredientNames,
+      instructions: instructions,
+      imageUrl: 'assets/images/placeholder.png',
+      notes: '$notes Nutrition values are estimates based on standard portions.',
+      allergenInfo: ['No allergen information available'],
+      tags: ['synthetic', ...ingredientNames.map((i) => i.toLowerCase())],
+      source: MealSource.synthetic,
+      userFeedback: [],
+      createdAt: DateTime.now(),
+      lastUpdated: DateTime.now(),
+      servings: ingredientNames.length > 1 ? 2 : 1,
+    );
+  }
+  
+  /// Helper to generate a reasonable meal type based on ingredients
+  String _getMealType(List<String> ingredients) {
+    // Convert ingredients to lowercase for easier matching
+    final lowerIngredients = ingredients.map((i) => i.toLowerCase()).toList();
+    
+    // Check for breakfast ingredients
+    if (lowerIngredients.contains('eggs') || 
+        lowerIngredients.contains('yogurt') || 
+        lowerIngredients.contains('greek yogurt') ||
+        lowerIngredients.contains('avocado') && lowerIngredients.contains('toast')) {
+      return 'Breakfast';
+    }
+    
+    // Check for salad ingredients
+    if (lowerIngredients.contains('lettuce') || 
+        (lowerIngredients.contains('spinach') && !lowerIngredients.contains('pasta'))) {
+      return 'Salad';
+    }
+    
+    // Check for pasta dishes
+    if (lowerIngredients.contains('pasta') || 
+        lowerIngredients.contains('spaghetti') ||
+        lowerIngredients.contains('penne')) {
+      return 'Pasta';
+    }
+    
+    // Check for rice dishes
+    if (lowerIngredients.contains('rice')) {
+      return 'Bowl';
+    }
+    
+    // Check for meat-based dishes
+    if (lowerIngredients.contains('beef') || 
+        lowerIngredients.contains('chicken') ||
+        lowerIngredients.contains('pork')) {
+      if (lowerIngredients.contains('broccoli') || 
+          lowerIngredients.contains('spinach') ||
+          lowerIngredients.contains('vegetables')) {
+        return 'Stir-fry';
+      }
+      return 'Dish';
+    }
+    
+    // Default dish name
+    return 'Meal';
+  }
+  
+  /// Generate simple cooking instructions based on ingredients
+  List<String> _generateInstructions(List<String> ingredients) {
+    final lowerIngredients = ingredients.map((i) => i.toLowerCase()).toList();
+    List<String> instructions = [];
+    
+    // Preparation steps
+    instructions.add('Gather all ingredients and prepare your workspace.');
+    
+    // Washing step for vegetables
+    if (lowerIngredients.any((i) => 
+        ['broccoli', 'spinach', 'lettuce', 'tomatoes', 'vegetables'].contains(i))) {
+      instructions.add('Wash all vegetables thoroughly.');
+    }
+    
+    // Chopping step
+    instructions.add('Chop all ingredients into appropriately sized pieces.');
+    
+    // Cooking step based on ingredients
+    if (lowerIngredients.contains('beef') || 
+        lowerIngredients.contains('chicken') || 
+        lowerIngredients.contains('pork') ||
+        lowerIngredients.contains('fish')) {
+      instructions.add('Cook the protein in a pan until done to your liking.');
+      
+      if (lowerIngredients.any((i) => 
+          ['broccoli', 'spinach', 'onions', 'garlic', 'vegetables'].contains(i))) {
+        instructions.add('Sauté the vegetables in the same pan.');
+      }
+    } else if (lowerIngredients.contains('pasta') || lowerIngredients.contains('rice')) {
+      instructions.add('Cook the ${lowerIngredients.contains("pasta") ? "pasta" : "rice"} according to package instructions.');
+    }
+    
+    // Combining step
+    instructions.add('Combine all ingredients in a bowl or plate.');
+    
+    // Dressing/seasoning step
+    if (lowerIngredients.contains('olive oil')) {
+      instructions.add('Drizzle with olive oil and season to taste.');
+    } else {
+      instructions.add('Season with salt and pepper to taste.');
+    }
+    
+    // Serving step
+    instructions.add('Serve immediately and enjoy!');
+    
+    return instructions;
   }
 }
 

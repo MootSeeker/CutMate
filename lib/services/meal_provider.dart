@@ -4,14 +4,19 @@ import '../models/meal.dart';
 import '../models/user.dart';
 import '../services/meal_service.dart';
 import '../services/ingredient_service.dart';
+import 'package:logging/logging.dart';
+
+final _logger = Logger('MealProvider');
 
 /// Provider class for meal recommendation data
 class MealProvider extends ChangeNotifier {
   List<Meal> _recommendations = [];
   bool _isLoading = false;
   String _errorMessage = '';
-  final MealService _mealService = MealService();
+  final MealService _mealService;
   
+  MealProvider({MealService? mealService}) 
+      : _mealService = mealService ?? MealService();
   /// All meal recommendations
   List<Meal> get recommendations => _recommendations;
   
@@ -94,8 +99,7 @@ class MealProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
-  /// Get new meal recommendations using the algorithmic OpenFoodFacts meal creation
+    /// Get new meal recommendations using the algorithmic OpenFoodFacts meal creation
   Future<void> getMealRecommendations({
     User? user,
     int count = 1,
@@ -112,32 +116,57 @@ class MealProvider extends ChangeNotifier {
     
     try {
       // Use availableIngredients as the basis for algorithmic meal creation
-      if (availableIngredients != null && availableIngredients.isNotEmpty) {
+      if (availableIngredients != null && availableIngredients.isNotEmpty) {        // Log the request for debugging
+        _logger.info('Requesting meal recommendations with ingredients: ${availableIngredients.join(", ")}');
+        
+        // Diagnose OpenFoodFacts connectivity issues
+        _logger.info('Diagnosing meal recommendation service...');
+        
         // Use the new OpenFoodFacts-based algorithmic meal generation
+        _logger.info('Creating meal recommendations with ${availableIngredients.length} ingredients');
+        
         final meals = await _mealService.getMealRecommendations(
           availableIngredients: availableIngredients,
           count: count,
           targetCalories: targetCalories ?? 600, // Default to 600 calories if not specified
         );
+          _logger.info('Received ${meals.length} meal recommendations');
         
         if (meals.isNotEmpty) {
+          int realMealCount = meals.where((meal) => meal.source != MealSource.fallbackStatic).length;
+          int fallbackCount = meals.where((meal) => meal.source == MealSource.fallbackStatic).length;
+          int syntheticCount = meals.where((meal) => meal.source == MealSource.synthetic).length;
+          
+          _logger.info('Meal sources breakdown: $realMealCount from database, $syntheticCount synthetic, $fallbackCount fallbacks');
+          
           // Add relevance score to each meal based on ingredient matching if preferredIngredients is provided
+          List<Meal> updatedMeals;
+          
           if (preferredIngredients != null && preferredIngredients.isNotEmpty) {
-            final updatedMeals = meals.map((meal) {
+            updatedMeals = meals.map((meal) {
               final score = IngredientService.calculateIngredientMatchScore(
                 meal.ingredients,
                 preferredIngredients,
               );
               return meal.copyWith(relevanceScore: score);
             }).toList();
-            
-            _recommendations = [...updatedMeals, ..._recommendations];
           } else {
-            _recommendations = [...meals, ..._recommendations];
+            updatedMeals = meals;
           }
           
-          _isLoading = false;
-          notifyListeners();
+          // Sort meals by relevance score (highest first)
+          updatedMeals.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+          
+          // Add new meals to the beginning of the list
+          _recommendations = [...updatedMeals, ..._recommendations];
+          
+          // Check if we got any non-fallback meals
+          bool hasRealMeals = updatedMeals.any((meal) => meal.source != MealSource.fallbackStatic);
+          if (!hasRealMeals) {            // Only warn if all meals are fallbacks
+            _logger.warning('All generated meals are fallbacks. Ingredients may not be found in the database.');
+            _logger.warning('This could be due to network connectivity issues or the OpenFoodFacts database not having matching products.');
+          }
+          
           return;
         } else {
           _errorMessage = 'No meals could be generated with the provided ingredients. Try a different selection.';
@@ -147,6 +176,7 @@ class MealProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = 'Error generating meal recommendations: $e';
+      _logger.severe('Error generating meal recommendations: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

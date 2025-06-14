@@ -174,6 +174,9 @@ enum MealSource {
   /// User-created meal
   userCreated("user"),
   
+  /// Synthetic meal created from basic ingredient data
+  synthetic("synthetic"),
+  
   /// Unknown source
   unknown("unknown");
   
