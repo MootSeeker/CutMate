@@ -23,17 +23,22 @@ dependencies:
   # Date formatting
   intl: ^0.18.0
     # HTTP requests
-  http: ^1.1.0
+  http: ^1.4.0
   
   # Unique ID generation
   uuid: ^4.0.0
     # Google Fonts (fallback for custom fonts)
   google_fonts: ^6.0.0
-  
-  # Local notifications
+    # Local notifications
   flutter_local_notifications: ^15.1.0+1
   timezone: ^0.9.2
   package_info_plus: ^4.1.0
+  openfoodfacts: ^3.22.0
+    # Image handling
+  cached_network_image: ^3.3.0
+  
+  # Logging
+  logging: ^1.2.0
 
 dev_dependencies:
   flutter_test:
