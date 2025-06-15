@@ -27,7 +27,13 @@ dependencies:
   
   # Unique ID generation
   uuid: ^4.0.0
-    # Google Fonts (fallback for custom fonts)
+  
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  
+  # Google Fonts (fallback for custom fonts)
   google_fonts: ^6.0.0
     # Local notifications
   flutter_local_notifications: ^15.1.0+1

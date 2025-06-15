@@ -4,12 +4,15 @@ import 'dart:convert';
 import 'package:cutmate/models/user.dart';
 import 'package:cutmate/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 /// Provider for managing user data
 class UserProvider extends ChangeNotifier {
   User? _user;
   bool _isLoading = false;
   String _errorMessage = '';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// Current user data
   User? get user => _user;
@@ -27,7 +30,14 @@ class UserProvider extends ChangeNotifier {
   Future<void> initialize() async {
     _setLoading(true);
     try {
-      await _loadUserFromStorage();
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        // User is logged in, try to load from Firestore first
+        await _loadUserFromFirestore(firebaseUser.uid);
+      } else {
+        // No user logged in, load from local storage
+        await _loadUserFromStorage();
+      }
     } catch (e) {
       _setError('Failed to load user data: $e');
     } finally {
@@ -48,8 +58,8 @@ class UserProvider extends ChangeNotifier {
   }) async {
     _setLoading(true);
     try {
-      // If user doesn't exist yet, create a new one with a UUID
-      final userId = _user?.id ?? const Uuid().v4();
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      final userId = firebaseUser?.uid ?? _user?.id ?? const Uuid().v4();
       
       _user = User(
         id: userId,
@@ -63,7 +73,12 @@ class UserProvider extends ChangeNotifier {
         preferences: preferences,
       );
       
+      // Save to both local storage and Firestore
       await _saveUserToStorage();
+      if (firebaseUser != null) {
+        await _saveUserToFirestore();
+      }
+      
       notifyListeners();
     } catch (e) {
       _setError('Failed to save user profile: $e');
@@ -181,5 +196,92 @@ class UserProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final userData = json.encode(_user!.toJson());
     await prefs.setString(AppConstants.userDataKey, userData);
+  }
+  
+  /// Load user data from Firestore
+  Future<void> _loadUserFromFirestore(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists && doc.data() != null) {
+        _user = User.fromJson(doc.data()!);
+        // Also save to local storage for offline access
+        await _saveUserToStorage();
+      } else {
+        // User document doesn't exist in Firestore, try local storage
+        await _loadUserFromStorage();
+      }
+    } catch (e) {
+      debugPrint('Error loading user from Firestore: $e');
+      // Fallback to local storage
+      await _loadUserFromStorage();
+    }
+  }
+  
+  /// Save user data to Firestore
+  Future<void> _saveUserToFirestore() async {
+    if (_user == null) return;
+    
+    final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return;
+    
+    try {
+      await _firestore.collection('users').doc(firebaseUser.uid).set(_user!.toJson());
+    } catch (e) {
+      debugPrint('Error saving user to Firestore: $e');
+      throw Exception('Failed to sync user data to cloud');
+    }
+  }
+  
+  /// Sync user data after login
+  Future<void> syncUserDataAfterLogin() async {
+    final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return;
+    
+    _setLoading(true);
+    try {
+      // Load from Firestore first
+      await _loadUserFromFirestore(firebaseUser.uid);
+      
+      // If no data in Firestore but we have local data, upload it
+      if (_user == null) {
+        await _loadUserFromStorage();
+        if (_user != null) {
+          // Update user ID to match Firebase user ID
+          _user = User(
+            id: firebaseUser.uid,
+            email: _user!.email,
+            dateOfBirth: _user!.dateOfBirth,
+            heightCm: _user!.heightCm,
+            startingWeightKg: _user!.startingWeightKg,
+            targetWeightKg: _user!.targetWeightKg,
+            targetDate: _user!.targetDate,
+            dietaryRestrictions: _user!.dietaryRestrictions,
+            preferences: _user!.preferences,
+          );
+          await _saveUserToFirestore();
+          await _saveUserToStorage();
+        }
+      }
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to sync user data: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Clear user data (for logout)
+  Future<void> clearUserData() async {
+    _setLoading(true);
+    try {
+      _user = null;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(AppConstants.userDataKey);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to clear user data: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
 }
