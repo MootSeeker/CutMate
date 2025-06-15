@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/meal.dart';
 import '../services/meal_provider.dart';
+import 'image_carousel.dart';
 
 /// Widget for displaying a meal card with user feedback options
 class MealCardWithFeedback extends StatelessWidget {
@@ -13,7 +14,6 @@ class MealCardWithFeedback extends StatelessWidget {
     this.onFeedbackGiven,
     super.key,
   });
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -22,9 +22,16 @@ class MealCardWithFeedback extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      clipBehavior: Clip.antiAlias, // Add clipping for the image carousel
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image Carousel - Shows all available meal images
+          ImageCarousel(
+            mainImageUrl: meal.imageUrl,
+            additionalImages: meal.additionalImages,
+            height: 200.0,
+          ),
           _buildHeader(context),
           _buildMealDetails(),
           _buildFeedbackSection(context),
@@ -139,13 +146,14 @@ class MealCardWithFeedback extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildNutrientInfo(String label, String value) {
+    Widget _buildNutrientInfo(String label, String value) {
     return Chip(
       label: Text(
         '$label: $value',
         style: const TextStyle(
           fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
         ),
       ),
       backgroundColor: Colors.grey[100],
