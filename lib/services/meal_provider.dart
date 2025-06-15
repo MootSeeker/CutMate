@@ -13,8 +13,10 @@ class MealProvider extends ChangeNotifier {
   List<Meal> _recommendations = [];
   bool _isLoading = false;
   String _errorMessage = '';
-  final MealService _mealService;  double _generationProgress = 0.0; // Tracks generation progress (0-100%)
+  final MealService _mealService;
+  double _generationProgress = 0.0; // Tracks generation progress (0-100%)
   DateTime? _lastUpdate; // Tracks when progress was last updated
+  bool _isDisposed = false; // Track if the provider is disposed
   
   MealProvider({MealService? mealService}) 
       : _mealService = mealService ?? MealService();
@@ -87,9 +89,9 @@ class MealProvider extends ChangeNotifier {
         notifyListeners();
       });
     }
-    
-    // Set final value after animation completes
+      // Set final value after animation completes
     Future.delayed(duration + const Duration(milliseconds: 10), () {
+      if (_isDisposed) return; // Skip if provider is disposed
       _generationProgress = targetValue;
       _lastUpdate = DateTime.now();
       notifyListeners();
@@ -334,8 +336,13 @@ class MealProvider extends ChangeNotifier {
   
   /// Get favorite meals
   List<Meal> get favoriteMeals => _recommendations.where((meal) => meal.isFavorite).toList();
-  
-  /// Get high-relevance meals
+    /// Get high-relevance meals
   List<Meal> get highRelevanceMeals => 
       _recommendations.where((meal) => meal.relevanceScore > 0.7).toList();
+      
+  @override
+  void dispose() {
+    _isDisposed = true; // Mark as disposed before super.dispose()
+    super.dispose();
+  }
 }
