@@ -77,6 +77,8 @@ class MealProvider extends ChangeNotifier {
     // Use Future.delayed for animation steps
     for (int i = 1; i <= steps; i++) {
       Future.delayed(stepDuration * i, () {
+        if (_isDisposed) return; // Skip if provider is disposed
+        
         // Calculate progress with easing curve (cubic ease out)
         final t = i / steps; // Linear time from 0-1
         final easedT = 1 - (1 - t) * (1 - t) * (1 - t); // Cubic ease out
